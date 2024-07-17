@@ -1,0 +1,20 @@
+<div>
+<ul>
+<!-- Iterating through the parent multifield -->
+<sly data-sly-list.parentField="${properties.parentMultifield}">
+<li>
+<div>
+                    Parent Field ${parentField.childTextField}
+</div>
+<ul>
+<!-- Iterating through the child multifield -->
+<sly data-sly-list.childField="${parentField.childMultifield}">
+<li>
+                            Sub Child Field: ${childField.subChildTextField}
+</li>
+</sly>
+</ul>
+</li>
+</sly>
+</ul>
+</div>
