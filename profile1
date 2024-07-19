@@ -1,0 +1,66 @@
+package com.adobe.aem.aemtraining.core.servlets;
+
+import com.day.cq.commons.jcr.JcrConstants;
+import org.apache.sling.api.SlingHttpServletRequest;
+import org.apache.sling.api.SlingHttpServletResponse;
+import org.apache.sling.api.resource.Resource;
+import org.apache.sling.api.servlets.SlingSafeMethodsServlet;
+import org.apache.sling.api.servlets.ServletResolverConstants;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.propertytypes.ServiceDescription;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.servlet.Servlet;
+import javax.servlet.ServletException;
+import java.io.IOException;
+
+@Component(
+    service = {Servlet.class},
+    property = {
+        ServletResolverConstants.SLING_SERVLET_PATHS + "=/bin/readprofileproperty",
+        ServletResolverConstants.SLING_SERVLET_METHODS + "=GET"
+    }
+)
+@ServiceDescription("Servlet to Read Profile Properties")
+public class ProfilePropertyServlet extends SlingSafeMethodsServlet {
+
+    private static final long serialVersionUID = 1L;
+    private static final Logger LOG = LoggerFactory.getLogger(ProfilePropertyServlet.class);
+
+    @Override
+    protected void doGet(final SlingHttpServletRequest request,
+                         final SlingHttpServletResponse response) throws ServletException, IOException {
+        LOG.info("Inside ProfilePropertyServlet doGet method.");
+        response.setContentType("text/plain");
+
+        try {
+            // Path to the profile node
+            String path = "/content/crxlite/abcd/profile";
+            LOG.info("Attempting to get resource at path: {}", path);
+            Resource resource = request.getResourceResolver().getResource(path);
+
+            if (resource != null) {
+                LOG.info("Resource found at path: {}", path);
+
+                // Read the properties
+                String email = resource.getValueMap().get("email", String.class);
+                String familyName = resource.getValueMap().get("familyname", String.class);
+                String givenName = resource.getValueMap().get("givenname", String.class);
+                String groups = resource.getValueMap().get("groups", String.class);
+
+                // Output the properties
+                response.getWriter().write("Email: " + (email != null ? email : "Not found") + "\n");
+                response.getWriter().write("Family Name: " + (familyName != null ? familyName : "Not found") + "\n");
+                response.getWriter().write("Given Name: " + (givenName != null ? givenName : "Not found") + "\n");
+                response.getWriter().write("Groups: " + (groups != null ? groups : "Not found") + "\n");
+            } else {
+                LOG.warn("Resource not found at path: {}", path);
+                response.getWriter().write("Resource not found at path: " + path);
+            }
+        } catch (Exception e) {
+            LOG.error("Error occurred while reading profile properties", e);
+            response.getWriter().write("Error: " + e.getMessage());
+        }
+    }
+}
