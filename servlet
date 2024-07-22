@@ -1,0 +1,30 @@
+package com.adobe.aem.aemtraining.core.servlets;
+
+
+
+import org.apache.sling.api.SlingHttpServletRequest;
+import org.apache.sling.api.SlingHttpServletResponse;
+import org.apache.sling.api.servlets.SlingAllMethodsServlet;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.propertytypes.ServiceDescription;
+import org.osgi.service.component.propertytypes.ServiceVendor;
+import javax.servlet.Servlet;
+import java.io.IOException;
+
+@Component(service = {Servlet.class},
+        property = {
+                "sling.servlet.paths=/bin/helloworld",
+                "sling.servlet.methods=GET"
+        })
+@ServiceDescription("Hello World Servlet")
+@ServiceVendor("Example")
+public class HelloWorldServlet extends SlingAllMethodsServlet {
+
+    @Override
+    protected void doGet(final SlingHttpServletRequest req,
+                         final SlingHttpServletResponse resp) throws IOException {
+        resp.setContentType("text/plain");
+        resp.getWriter().write("Hello World");
+    }
+}
+
