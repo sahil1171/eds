@@ -1,0 +1,52 @@
+ In folder AEM in that CMD ---->java -jar cq-author-p4502.jar -r author -gui 
+
+
+after that install 6.5.14 package in AEM through crx.
+
+ 
+// mvn -B org.apache.maven.plugins:maven-archetype-plugin:3.2.1:generate -D archetypeGroupId=com.adobe.aem  -D archetypeArtifactId=aem-project-archetype -D archetypeVersion=26 -D appTitle="Demo AEM" -D appId="demo-aem" -D groupId="com.demo.aem" -D aemVersion="6.5.0" //
+
+create folder project in that cmd --->
+mvn -B org.apache.maven.plugins:maven-archetype-plugin:3.2.1:generate -D archetypeGroupId=com.adobe.aem -D archetypeArtifactId=aem-project-archetype -D archetypeVersion=39 -D appTitle="AEM Training" -D appId="aemtraining" -D groupId="com.adobe.aem.aemtraining" -D artifactId="aem-training" -D package="com.adobe.aem.aemtraining" -D version="0.0.1-SNAPSHOT" -D aemVersion="6.5.14"
+
+after that --->
+
+mvn clean install
+
+mvn -B archetype:generate -D archetypeGroupId=com.adobe.aem -D archetypeArtifactId=aem-project-archetype -D archetypeVersion=39 -D aemVersion=6.5.5 -D appTitle="Project" -D appId="Project" -D groupId="com.adobe.aem.guides.project" -D frontendModule="react"
+
+mvn -B org.apache.maven.plugins:maven-archetype-plugin:3.2.1:generate -D archetypeGroupId=com.adobe.aem  -D archetypeArtifactId=aem-project-archetype -D archetypeVersion=39 -D appTitle="Demo AEM" -D appId="demo-aem" -D groupId="com.demo.aem" -D aemVersion="6.5.17"
+
+mvn clean install -PautoInstallSinglePackage
+
+=====================BARCLAYS==========================================
+
+mvn -B archetype:generate -D archetypeGroupId=com.adobe.aem -D archetypeArtifactId=aem-project-archetype -D archetypeVersion=39 -D aemVersion="6.5.15.0" -D appTitle="WKND App" -D appId="wkndapp" -D groupId="com.adobe.aem.guides.wkndapp" -D frontendModule="react"
+
+mvn -B archetype:generate -D archetypeGroupId=com.adobe.aem -D archetypeArtifactId=aem-project-archetype -D archetypeVersion=39 -D aemVersion="6.5.16" -D appTitle="WKND App" -D appId="wknd-app" -D groupId="com.adobe.aem.guides.wkndapp" -D frontendModule="react"
+
+neeraj 
+mvn -B org.apache.maven.plugins:maven-archetype-plugin:3.2.1:generate -D archetypeGroupId=com.adobe.aem -D archetypeArtifactId=aem-project-archetype -D archetypeVersion=39 -D appTitle="WKND App" -D appId="wknd" -D artifactId="aem-guides-wknd" -D groupId="com.adobe.aem.guides.wknd" -D aemVersion="6.5.15"
+
+ mvn clean install -PautoInstallSinglePackage -DskipTests
+
+
+NATIVE SPA
+groupId="com.adobe.aem.guides.wkndspa.react"
+
+mvn -B org.apache.maven.plugins:maven-archetype-plugin:3.2.1:generate -D archetypeGroupId=com.adobe.aem -D archetypeArtifactId=aem-project-archetype
+-D archetypeVersion=39 -D appTitle="WKND SPA React" -D appId="wknd-spa-react" -D artifactId="aem-guides-wknd-spa.react" -D groupID="com.adobe.aem.guides.wkndspa.react -D frontendModule="react" -D aemVersion="6.5.15"
+
+
+mvn -B org.apache.maven.plugins:maven-archetype-plugin:3.2.1:generate -D archetypeGroupId=com.adobe.aem -D archetypeArtifactId=aem-project-archetype -D archetypeVersion=39 -D appTitle="WKND SPA React" -D appId="wknd-spa-react" -D artifactId="aem-guides-wknd-spa.react" -D groupId="com.adobe.aem.guides.wkndspa.react" -D frontendModule="react" -D aemVersion="6.5.15"
+  
+// mvn -B org.apache.maven.plugins:maven-archetype-plugin:3.2.1:generate \
+ -D archetypeGroupId=com.adobe.aem \
+ -D archetypeArtifactId=aem-project-archetype \
+ -D archetypeVersion=35 \
+ -D appTitle="WKND SPA React" \
+ -D appId="wknd-spa-react" \
+ -D artifactId="aem-guides-wknd-spa.react" \
+ -D groupId="com.adobe.aem.guides.wkndspa.react" \
+ -D frontendModule="react" \
+ -D aemVersion="cloud" //
