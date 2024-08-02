@@ -1,14 +1,57 @@
-Image component i have developed which contains 3tabs imagepanel advanced and maximayzertab imagetabpanel consist of 4 items one of them is multifield & dropdown advanced tab conist of4 times maximayzer tab consist 1 item which consist of id I Today I have tested the CardAggregator component Write a mail to Chandra
-ChatGPT
-Sure, here's a draft for your email to Chandra:
-Subject: Update on Image Component Development and CardAggregator Testing
-Dear Chandra,
-I hope this message finds you well. I wanted to provide you with an update on my recent activities:
-Image Component Development:
-I have successfully developed the Image Component, which includes three tabs:
-ImageTabPanel: This panel contains 4 items, including a multifield and dropdown.
-Advanced Tab: This tab includes 4 components.
-Maximizer Tab: This tab features a single item with ID I.
-Testing:
-Today, I completed testing on the CardAggregator component. It performed well under various conditions, and I encountered no significant issues during testing.
-Please let me know if you need any further details or if there are specific aspects you would like me to delve into.
+import org.apache.sling.api.resource.Resource;
+import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.api.resource.ValueMap;
+import org.apache.sling.models.annotations.Model;
+import org.apache.sling.models.annotations.injectorspecific.Self;
+import org.apache.sling.models.annotations.injectorspecific.ValueMapValue;
+
+import javax.annotation.PostConstruct;
+import javax.jcr.Node;
+import javax.jcr.RepositoryException;
+import javax.jcr.Session;
+
+@Model(adaptables = Resource.class)
+public class Reference {
+
+    @Self
+    private Resource resource;
+
+    @ValueMapValue(name = "et:referencePath", injectionStrategy = InjectionStrategy.OPTIONAL)
+    private String propReferencePath;
+
+    @ValueMapValue(name = "et:hideContainer", injectionStrategy = InjectionStrategy.OPTIONAL)
+    private String propHideContainer;
+
+    private String referencePath;
+
+    @PostConstruct
+    protected void init() {
+        try {
+            if (propReferencePath != null && !propReferencePath.isEmpty()) {
+                ResourceResolver resourceResolver = resource.getResourceResolver();
+                Session session = resourceResolver.adaptTo(Session.class);
+                
+                if (session != null && session.nodeExists(propReferencePath)) {
+                    Node node = session.getNode(propReferencePath);
+
+                    if (propReferencePath.startsWith("/content/etrade/retail/en-US/global-components/disclosures")
+                            && node.hasNode("jcr:content/richTextEditor")) {
+                        referencePath = propReferencePath + "/jcr:content/richTextEditor";
+                    } else if (propHideContainer != null && propHideContainer.isEmpty()
+                            && propReferencePath.contains("/componentcontainer")
+                            && node.hasNode("container-par")) {
+                        referencePath = propReferencePath + "/container-par";
+                    } else {
+                        referencePath = propReferencePath;
+                    }
+                }
+            }
+        } catch (RepositoryException e) {
+            // Handle exception
+        }
+    }
+
+    public String getReferencePath() {
+        return referencePath;
+    }
+}
