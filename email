@@ -1,57 +1,24 @@
-import org.apache.sling.api.resource.Resource;
-import org.apache.sling.api.resource.ResourceResolver;
-import org.apache.sling.api.resource.ValueMap;
-import org.apache.sling.models.annotations.Model;
-import org.apache.sling.models.annotations.injectorspecific.Self;
-import org.apache.sling.models.annotations.injectorspecific.ValueMapValue;
+Story Overview: I have been assigned a story to create a CSV file for user reports for the access control team.
 
-import javax.annotation.PostConstruct;
-import javax.jcr.Node;
-import javax.jcr.RepositoryException;
-import javax.jcr.Session;
+Backend Development: I have written a servlet to generate the CSV file, ensuring that the generated file is sorted alphabetically.
 
-@Model(adaptables = Resource.class)
-public class Reference {
+UI Implementation: I have developed JavaScript for handling expanded and grouped reports. When the "expanded" option is selected, it calls the AEM servlet to generate and download the user report CSV file. When "grouped" is selected, it downloads a regular report.
 
-    @Self
-    private Resource resource;
+CSV Download Process: The JavaScript is designed to make sure the correct report (expanded or grouped) is downloaded based on the user's selection.
 
-    @ValueMapValue(name = "et:referencePath", injectionStrategy = InjectionStrategy.OPTIONAL)
-    private String propReferencePath;
+EBM Testing: In addition to this, I am testing EBM templates and pages by creating workflows.
 
-    @ValueMapValue(name = "et:hideContainer", injectionStrategy = InjectionStrategy.OPTIONAL)
-    private String propHideContainer;
+Author-Publisher Validation: As part of the testing, I am verifying whether changes made in the author environment are successfully reflected in the publisher environment.
 
-    private String referencePath;
 
-    @PostConstruct
-    protected void init() {
-        try {
-            if (propReferencePath != null && !propReferencePath.isEmpty()) {
-                ResourceResolver resourceResolver = resource.getResourceResolver();
-                Session session = resourceResolver.adaptTo(Session.class);
-                
-                if (session != null && session.nodeExists(propReferencePath)) {
-                    Node node = session.getNode(propReferencePath);
 
-                    if (propReferencePath.startsWith("/content/etrade/retail/en-US/global-components/disclosures")
-                            && node.hasNode("jcr:content/richTextEditor")) {
-                        referencePath = propReferencePath + "/jcr:content/richTextEditor";
-                    } else if (propHideContainer != null && propHideContainer.isEmpty()
-                            && propReferencePath.contains("/componentcontainer")
-                            && node.hasNode("container-par")) {
-                        referencePath = propReferencePath + "/container-par";
-                    } else {
-                        referencePath = propReferencePath;
-                    }
-                }
-            }
-        } catch (RepositoryException e) {
-            // Handle exception
-        }
-    }
 
-    public String getReferencePath() {
-        return referencePath;
-    }
-}
+
+
+
+
+
+
+
+
+ChatGPT can make mistakes. Check importan
