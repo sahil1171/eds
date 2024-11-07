@@ -34,15 +34,19 @@ public class ActivePagesQueryServlet extends SlingAllMethodsServlet {
 
     @Override
     protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws IOException {
+        LOG.info("Received request to find active pages.");
+
         ResourceResolver resourceResolver = request.getResourceResolver();
         Session session = resourceResolver.adaptTo(Session.class);
 
         if (session == null) {
+            LOG.error("Could not obtain JCR session.");
             response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not obtain JCR session.");
             return;
         }
 
-        String resourceType = request.getParameter("resourceType"); // Pass Sling resource type as a parameter
+        String resourceType = request.getParameter("resourceType");
+        LOG.info("Querying for resourceType: {}", resourceType);
 
         try {
             // Set up query parameters in a map
@@ -59,26 +63,33 @@ public class ActivePagesQueryServlet extends SlingAllMethodsServlet {
             PredicateGroup predicateGroup = PredicateGroup.create(queryMap);
 
             // Create and execute the query
+            LOG.info("Executing query with parameters: {}", queryMap);
             Query query = queryBuilder.createQuery(predicateGroup, session);
             SearchResult searchResult = query.getResult();
 
             // Build the response with active pages
             StringBuilder responseContent = new StringBuilder();
             List<Hit> hits = searchResult.getHits();
+            LOG.info("Found {} active pages.", hits.size());
+
             for (Hit hit : hits) {
                 String pagePath = hit.getPath();
                 responseContent.append("Active page: ").append(pagePath).append("\n");
+                LOG.debug("Found active page: {}", pagePath);
             }
 
             // Write the response
             response.setContentType("text/plain");
             response.getWriter().write(responseContent.toString());
+            LOG.info("Response sent with active page paths.");
+
         } catch (Exception e) {
             LOG.error("Error executing query to find active pages", e);
             response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error finding active pages.");
         } finally {
             if (session != null && session.isLive()) {
                 session.logout();
+                LOG.info("Session logged out.");
             }
         }
     }
