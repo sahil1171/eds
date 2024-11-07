@@ -13,6 +13,7 @@ import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.jcr.Session;
 import javax.servlet.Servlet;
 import java.io.IOException;
 import java.util.HashMap;
@@ -34,6 +35,13 @@ public class ActivePagesQueryServlet extends SlingAllMethodsServlet {
     @Override
     protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws IOException {
         ResourceResolver resourceResolver = request.getResourceResolver();
+        Session session = resourceResolver.adaptTo(Session.class);
+
+        if (session == null) {
+            response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not obtain JCR session.");
+            return;
+        }
+
         String resourceType = request.getParameter("resourceType"); // Pass Sling resource type as a parameter
 
         try {
@@ -51,7 +59,7 @@ public class ActivePagesQueryServlet extends SlingAllMethodsServlet {
             PredicateGroup predicateGroup = PredicateGroup.create(queryMap);
 
             // Create and execute the query
-            Query query = queryBuilder.createQuery(predicateGroup, resourceResolver);
+            Query query = queryBuilder.createQuery(predicateGroup, session);
             SearchResult searchResult = query.getResult();
 
             // Build the response with active pages
@@ -68,6 +76,10 @@ public class ActivePagesQueryServlet extends SlingAllMethodsServlet {
         } catch (Exception e) {
             LOG.error("Error executing query to find active pages", e);
             response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error finding active pages.");
+        } finally {
+            if (session != null && session.isLive()) {
+                session.logout();
+            }
         }
     }
 }
