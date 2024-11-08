@@ -1,0 +1,81 @@
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+// ... Other imports
+
+@Override
+protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws IOException {
+    LOG.info("Received request to find active pages and scan for specific links.");
+
+    ResourceResolver resourceResolver = request.getResourceResolver();
+    Session session = resourceResolver.adaptTo(Session.class);
+
+    if (session == null) {
+        LOG.error("Could not obtain JCR session.");
+        response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not obtain JCR session.");
+        return;
+    }
+
+    String resourceType = request.getParameter("resourceType");
+    LOG.info("Querying for resourceType: {}", resourceType);
+
+    try {
+        // Query setup
+        Map<String, String> queryMap = new HashMap<>();
+        queryMap.put("path", "/content");
+        queryMap.put("type", "cq:PageContent");
+        queryMap.put("property", "sling:resourceType");
+        queryMap.put("property.value", resourceType);
+        queryMap.put("property.1_property", "cq:lastReplicationAction");
+        queryMap.put("property.1_property.value", "Activate");
+        queryMap.put("p.limit", "-1");
+
+        PredicateGroup predicateGroup = PredicateGroup.create(queryMap);
+        Query query = queryBuilder.createQuery(predicateGroup, session);
+        SearchResult searchResult = query.getResult();
+
+        StringBuilder responseContent = new StringBuilder();
+        List<Hit> hits = searchResult.getHits();
+        LOG.info("Found {} active pages.", hits.size());
+
+        for (Hit hit : hits) {
+            String pagePath = hit.getPath();
+            String pageUrl = "http://<host>:4503" + pagePath + ".html";
+
+            try {
+                Document doc = Jsoup.connect(pageUrl).get();
+                Elements links = doc.select("a[href]");  // Select all links
+
+                responseContent.append("Active page: ").append(pagePath).append("\n");
+                LOG.debug("Scanning page: {}", pageUrl);
+
+                // Filter links based on keywords and add to response
+                for (Element link : links) {
+                    String href = link.attr("href");
+                    if (href.contains("cdn") || href.contains("/aempros/content/dam")) {
+                        responseContent.append(" - Found link: ").append(href).append("\n");
+                    }
+                }
+
+            } catch (IOException e) {
+                LOG.error("Error connecting to page: {}", pageUrl, e);
+            }
+        }
+
+        // Write the response
+        response.setContentType("text/plain");
+        response.getWriter().write(responseContent.toString());
+        LOG.info("Response sent with active page links containing specified keywords.");
+
+    } catch (Exception e) {
+        LOG.error("Error executing query to find active pages", e);
+        response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error finding active pages.");
+    } finally {
+        if (session != null && session.isLive()) {
+            session.logout();
+            LOG.info("Session logged out.");
+        }
+    }
+}
