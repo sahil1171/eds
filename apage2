@@ -1,0 +1,23 @@
+ Pattern pattern = Pattern.compile("https?://[^\\s]+(?:cdn|/aempros/content/dam)[^\\s]*", Pattern.CASE_INSENSITIVE);
+
+        for (Hit hit : hits) {
+            String pagePath = hit.getPath();
+            String pageUrl = "http://<host>:4503" + pagePath + ".html";
+
+            try {
+                Document doc = Jsoup.connect(pageUrl).get();
+                String pageContent = doc.html();  // Get entire page content as a string
+                responseContent.append("Active page: ").append(pagePath).append("\n");
+                LOG.debug("Scanning page: {}", pageUrl);
+
+                // Use regex to find all matching URLs
+                Matcher matcher = pattern.matcher(pageContent);
+                while (matcher.find()) {
+                    String matchedUrl = matcher.group();
+                    responseContent.append(" - Found link: ").append(matchedUrl).append("\n");
+                }
+
+            } catch (IOException e) {
+                LOG.error("Error connecting to page: {}", pageUrl, e);
+            }
+        }
