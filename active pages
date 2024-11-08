@@ -1,9 +1,32 @@
+import com.day.cq.search.Query;
+import com.day.cq.search.QueryBuilder;
+import com.day.cq.search.PredicateGroup;
+import com.day.cq.search.result.Hit;
+import com.day.cq.search.result.SearchResult;
+import org.apache.sling.api.SlingHttpServletRequest;
+import org.apache.sling.api.SlingHttpServletResponse;
+import org.apache.sling.api.servlets.SlingAllMethodsServlet;
+import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.api.servlets.ServletResolverConstants;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.jcr.Session;
+import javax.servlet.Servlet;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+// Imports for Jsoup and regex
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-
-// ... Other imports
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Override
 protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws IOException {
