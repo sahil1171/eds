@@ -1,0 +1,78 @@
+package com.mkyong;
+
+import org.apache.sling.api.SlingHttpServletRequest;
+import org.apache.sling.api.SlingHttpServletResponse;
+import org.apache.sling.api.servlets.SlingAllMethodsServlet;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.osgi.service.component.annotations.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.servlet.Servlet;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
+
+@Component(
+        service = Servlet.class,
+        property = {
+                "sling.servlet.paths=/bin/findLinks",
+                "sling.servlet.methods=GET"
+        }
+)
+public class JsoupFindLinkServlet extends SlingAllMethodsServlet {
+
+    private static final Logger LOG = LoggerFactory.getLogger(JsoupFindLinkServlet.class);
+
+    @Override
+    protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws IOException {
+        // Get URL parameter from request
+        String url = request.getParameter("url");
+        
+        if (url == null || url.isEmpty()) {
+            LOG.error("URL parameter is missing.");
+            response.sendError(SlingHttpServletResponse.SC_BAD_REQUEST, "URL parameter is required.");
+            return;
+        }
+
+        LOG.info("Fetching links from URL: {}", url);
+
+        // Set to store unique links
+        Set<String> links = findLinks(url);
+
+        // Build response
+        response.setContentType("text/plain");
+        for (String link : links) {
+            response.getWriter().println(link);
+        }
+        LOG.info("Links fetched successfully from URL: {}", url);
+    }
+
+    private Set<String> findLinks(String url) throws IOException {
+        Set<String> links = new HashSet<>();
+
+        try {
+            Document doc = Jsoup.connect(url)
+                    .userAgent("Mozilla")
+                    .timeout(3000)
+                    .get();
+
+            Elements elements = doc.select("a[href]");
+            for (Element element : elements) {
+                String link = element.attr("href");
+                links.add(link);
+            }
+
+            LOG.info("Found {} links on the page.", links.size());
+
+        } catch (IOException e) {
+            LOG.error("Error connecting to URL: {}", url, e);
+            throw e;
+        }
+
+        return links;
+    }
+}
