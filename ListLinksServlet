@@ -34,8 +34,12 @@ public class ListLinksServlet extends SlingSafeMethodsServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         String url = request.getParameter("url");
+        
+        // Log the received URL parameter
+        LOG.info("Received request to fetch content from URL: {}", url);
 
         if (url == null || url.isEmpty()) {
+            LOG.warn("URL parameter is missing or empty.");
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             response.getWriter().write("URL parameter is required");
             return;
@@ -45,17 +49,28 @@ public class ListLinksServlet extends SlingSafeMethodsServlet {
         StringBuilder result = new StringBuilder();
 
         try {
+            // Log before connecting to the URL
+            LOG.info("Connecting to URL: {}", url);
             Document doc = Jsoup.connect(url).get();
+            LOG.info("Successfully fetched content from URL: {}", url);
 
             // Fetch Media Elements
             Elements media = doc.select("[src]");
             result.append("\"media\": [");
             for (Element src : media) {
-                if (src.tagName().equals("img")) {
+                String mediaTag = src.tagName();
+                String mediaSrc = src.attr("abs:src");
+                
+                if (mediaTag.equals("img")) {
+                    String width = src.attr("width");
+                    String height = src.attr("height");
+                    String alt = trim(src.attr("alt"), 20);
                     result.append(String.format("{\"tag\": \"%s\", \"src\": \"%s\", \"width\": \"%s\", \"height\": \"%s\", \"alt\": \"%s\"},",
-                            src.tagName(), src.attr("abs:src"), src.attr("width"), src.attr("height"), trim(src.attr("alt"), 20)));
+                            mediaTag, mediaSrc, width, height, alt));
+                    LOG.debug("Found image: src={}, width={}, height={}, alt={}", mediaSrc, width, height, alt);
                 } else {
-                    result.append(String.format("{\"tag\": \"%s\", \"src\": \"%s\"},", src.tagName(), src.attr("abs:src")));
+                    result.append(String.format("{\"tag\": \"%s\", \"src\": \"%s\"},", mediaTag, mediaSrc));
+                    LOG.debug("Found media element: tag={}, src={}", mediaTag, mediaSrc);
                 }
             }
             result.append("],");
@@ -64,8 +79,11 @@ public class ListLinksServlet extends SlingSafeMethodsServlet {
             Elements imports = doc.select("link[href]");
             result.append("\"imports\": [");
             for (Element link : imports) {
+                String linkHref = link.attr("abs:href");
+                String linkRel = link.attr("rel");
                 result.append(String.format("{\"tag\": \"%s\", \"href\": \"%s\", \"rel\": \"%s\"},",
-                        link.tagName(), link.attr("abs:href"), link.attr("rel")));
+                        link.tagName(), linkHref, linkRel));
+                LOG.debug("Found import: href={}, rel={}", linkHref, linkRel);
             }
             result.append("],");
 
@@ -73,13 +91,19 @@ public class ListLinksServlet extends SlingSafeMethodsServlet {
             Elements links = doc.select("a[href]");
             result.append("\"links\": [");
             for (Element link : links) {
+                String linkHref = link.attr("abs:href");
+                String linkText = trim(link.text(), 35);
                 result.append(String.format("{\"tag\": \"a\", \"href\": \"%s\", \"text\": \"%s\"},",
-                        link.attr("abs:href"), trim(link.text(), 35)));
+                        linkHref, linkText));
+                LOG.debug("Found link: href={}, text={}", linkHref, linkText);
             }
             result.append("]");
 
             // Write the JSON response
+            LOG.info("Writing JSON response for URL: {}", url);
             response.getWriter().write("{" + result.toString() + "}");
+            LOG.info("Response successfully written for URL: {}", url);
+
         } catch (IOException e) {
             LOG.error("Error fetching content from URL: {}", url, e);
             response.getWriter().write("{\"error\": \"Failed to retrieve content from the provided URL.\"}");
