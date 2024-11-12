@@ -1,0 +1,96 @@
+package org.jsoup.examples.servlets;
+
+import org.apache.sling.api.servlets.HttpConstants;
+import org.apache.sling.api.servlets.SlingSafeMethodsServlet;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.propertytypes.ServiceDescription;
+import org.osgi.service.component.propertytypes.ServiceVendor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.servlet.Servlet;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+@Component(service = Servlet.class,
+        property = {
+                "sling.servlet.methods=" + HttpConstants.METHOD_GET,
+                "sling.servlet.paths=/bin/jsoup/listlinks",
+                "sling.servlet.extensions=json"
+        })
+@ServiceDescription("Servlet to list links, media, and imports from a URL using Jsoup")
+@ServiceVendor("ExampleVendor")
+public class ListLinksServlet extends SlingSafeMethodsServlet {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ListLinksServlet.class);
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String url = request.getParameter("url");
+
+        if (url == null || url.isEmpty()) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.getWriter().write("URL parameter is required");
+            return;
+        }
+
+        response.setContentType("application/json");
+        StringBuilder result = new StringBuilder();
+
+        try {
+            Document doc = Jsoup.connect(url).get();
+
+            // Fetch Media Elements
+            Elements media = doc.select("[src]");
+            result.append("\"media\": [");
+            for (Element src : media) {
+                if (src.tagName().equals("img")) {
+                    result.append(String.format("{\"tag\": \"%s\", \"src\": \"%s\", \"width\": \"%s\", \"height\": \"%s\", \"alt\": \"%s\"},",
+                            src.tagName(), src.attr("abs:src"), src.attr("width"), src.attr("height"), trim(src.attr("alt"), 20)));
+                } else {
+                    result.append(String.format("{\"tag\": \"%s\", \"src\": \"%s\"},", src.tagName(), src.attr("abs:src")));
+                }
+            }
+            result.append("],");
+
+            // Fetch Imports (CSS and JavaScript)
+            Elements imports = doc.select("link[href]");
+            result.append("\"imports\": [");
+            for (Element link : imports) {
+                result.append(String.format("{\"tag\": \"%s\", \"href\": \"%s\", \"rel\": \"%s\"},",
+                        link.tagName(), link.attr("abs:href"), link.attr("rel")));
+            }
+            result.append("],");
+
+            // Fetch Links
+            Elements links = doc.select("a[href]");
+            result.append("\"links\": [");
+            for (Element link : links) {
+                result.append(String.format("{\"tag\": \"a\", \"href\": \"%s\", \"text\": \"%s\"},",
+                        link.attr("abs:href"), trim(link.text(), 35)));
+            }
+            result.append("]");
+
+            // Write the JSON response
+            response.getWriter().write("{" + result.toString() + "}");
+        } catch (IOException e) {
+            LOG.error("Error fetching content from URL: {}", url, e);
+            response.getWriter().write("{\"error\": \"Failed to retrieve content from the provided URL.\"}");
+        }
+    }
+
+    private static String trim(String s, int width) {
+        if (s.length() > width) {
+            return s.substring(0, width - 1) + ".";
+        } else {
+            return s;
+        }
+    }
+}
