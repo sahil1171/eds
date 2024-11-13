@@ -1,0 +1,28 @@
+private void createPackageWithLinks(Session session, Set<String> links) {
+        try {
+            JcrPackageManager packageManager = packageManagerFactory.getPackageManager(session);
+            JcrPackage jcrPackage = packageManager.create("filtered-links-package", "1.0", "/etc/packages/my_packages");
+
+            if (jcrPackage != null) {
+                VaultPackage vaultPackage = jcrPackage.getPackage();
+                JcrPackageDefinition packageDefinition = jcrPackage.getDefinition();
+
+                if (packageDefinition != null) {
+                    PackageProperties properties = packageDefinition.getProperties();
+                    properties.set("packageDescription", "Package containing filtered links as filters.");
+                }
+
+                for (String link : links) {
+                    PathFilterSet filterSet = new PathFilterSet(link);
+                    packageDefinition.getMetaInf().getFilter().add(filterSet);
+                    LOG.debug("Added filter to package: {}", link);
+                }
+
+                packageManager.assemble(jcrPackage, null);
+                LOG.info("Package created and assembled with filtered links.");
+            } else {
+                LOG.error("Failed to create JCR package.");
+            }
+        } catch (RepositoryException | PackageException e) {
+            LOG.error("Error creating package with links", e);
+        }
