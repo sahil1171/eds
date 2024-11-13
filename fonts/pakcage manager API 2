@@ -1,0 +1,70 @@
+   // Helper method to get filtered links from a page
+    private Set<String> getFilteredLinksFromPage(String url) throws IOException {
+        Set<String> links = new LinkedHashSet<>();  // Using LinkedHashSet to preserve insertion order and avoid duplicates
+        LOG.debug("Connecting to page URL: {}", url);
+
+        Document doc = Jsoup.connect(url)
+                .userAgent("Mozilla")
+                .timeout(5000)
+                .get();
+
+        LOG.debug("Connected to page URL successfully. Scanning for filtered links.");
+
+        // Select all <a> tags with href attribute
+        Elements elements = doc.select("a[href]");
+        for (Element element : elements) {
+            String href = element.attr("abs:href"); // Use absolute URL for consistency
+            if ((href.contains("cdn") || href.contains("/aempros/content/dam")) && !links.contains(href)) {
+                links.add(href);
+                LOG.debug("Filtered link extracted: {}", href);
+            }
+        }
+
+        // Select all elements with src attribute (e.g., images, scripts, etc.)
+        Elements srcElements = doc.select("[src]");
+        for (Element element : srcElements) {
+            String src = element.attr("abs:src"); // Use absolute URL for consistency
+            if ((src.contains("cdn") || src.contains("/aempros/content/dam")) && !links.contains(src)) {
+                links.add(src);
+                LOG.debug("Filtered src link extracted: {}", src);
+            }
+        }
+
+        // Select all <link> tags with href attribute (e.g., imported stylesheets)
+        Elements linkElements = doc.select("link[href]");
+        for (Element element : linkElements) {
+            String href = element.attr("abs:href"); // Use absolute URL for consistency
+            if ((href.contains("cdn") || href.contains("/aempros/content/dam")) && !links.contains(href)) {
+                links.add(href);
+                LOG.debug("Filtered link href extracted: {}", href);
+            }
+        }
+
+        LOG.info("Total filtered links found on page {}: {}", url, links.size());
+        return links;
+    }
+
+    // Helper method to create a package and add filtered links as filter entries
+    private void createPackageWithLinks(Set<String> links, Session session) throws Exception {
+        // Define package name and path
+        String packageName = "filtered-links-package.zip";
+        String packagePath = "/tmp/" + packageName;
+
+        // Create a new package
+        Package pkg = packageManager.createPackage("filtered-links-package", packagePath);
+
+        // Add filter entries for each filtered link
+        for (String link : links) {
+            // Assuming the link is a path under /content, adjust accordingly if needed
+            String filterPath = link.replace("http://<host>:4503", "/content");  // Adjust URL to repository path
+            pkg.addFilterEntry(filterPath);
+            LOG.debug("Added filter entry: {}", filterPath);
+        }
+
+        // Build the package
+        pkg.build();
+
+        // Save the package to the session
+        pkg.save(session);
+        LOG.info("Package created and saved at {}", packagePath);
+    }
