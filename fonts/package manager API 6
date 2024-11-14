@@ -145,19 +145,14 @@ public class FindLinksAndCreatePackageServlet extends SlingAllMethodsServlet {
 ]]]]]]]]]]]]]]]]]]]]]]\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
 
 import org.apache.jackrabbit.vault.fs.api.PathFilterSet;
-import org.apache.jackrabbit.vault.packaging.JcrPackage;
-import org.apache.jackrabbit.vault.packaging.JcrPackageDefinition;
-import org.apache.jackrabbit.vault.packaging.JcrPackageManager;
-import org.apache.jackrabbit.vault.packaging.PackageManager;
-import org.apache.jackrabbit.vault.packaging.PackageSession;
+import org.apache.jackrabbit.vault.fs.config.DefaultMetaInf;
+import org.apache.jackrabbit.vault.fs.io.ZipVaultPackage;
+import org.apache.jackrabbit.vault.packaging.*;
 import org.apache.jackrabbit.vault.packaging.impl.JcrPackageManagerImpl;
-import org.apache.jackrabbit.vault.packaging.impl.PackageImpl;
-import org.apache.jackrabbit.vault.packaging.PackageManager;
-import org.apache.jackrabbit.vault.packaging.PackageSession;
-
 import javax.jcr.Node;
 import javax.jcr.RepositoryException;
 import javax.jcr.Session;
+import java.io.File;
 import java.io.IOException;
 
 public class AEMPackageCreator {
@@ -169,29 +164,37 @@ public class AEMPackageCreator {
     }
 
     public void createPackage(String packageGroup, String packageName, String packageVersion, String filterPath) {
+        JcrPackageManager packageManager = new JcrPackageManagerImpl(session);
+        JcrPackage jcrPackage = null;
+
         try {
-            JcrPackageManager packageManager = new JcrPackageManagerImpl(session);
-
-            // Create the package in JCR repository
-            JcrPackage jcrPackage = packageManager.create(packageGroup, packageName, packageVersion);
-
-            // Define the package filters (paths to include in the package)
-            JcrPackageDefinition definition = jcrPackage.getDefinition();
-            if (definition != null) {
-                definition.getMetaInf().setFilter(new PathFilterSet(filterPath));
+            // Check if package already exists, if so, open it; otherwise, create a new package
+            jcrPackage = packageManager.open(packageGroup + "/" + packageName, packageVersion);
+            if (jcrPackage == null) {
+                jcrPackage = packageManager.create(packageGroup, packageName, packageVersion);
             }
 
-            // Save the changes
-            session.save();
+            // Define the package filter (path to include in the package)
+            if (jcrPackage != null) {
+                JcrPackageDefinition definition = jcrPackage.getDefinition();
+                if (definition != null) {
+                    DefaultMetaInf metaInf = (DefaultMetaInf) definition.getMetaInf();
+                    metaInf.setFilter(new PathFilterSet(filterPath));
+                    definition.set("description", "A package containing DAM assets under " + filterPath);
+                }
 
-            // Build the package
-            packageManager.assemble(jcrPackage, null);
-
-            System.out.println("Package created successfully: " + packageName);
+                // Save and build the package
+                session.save();
+                packageManager.assemble(jcrPackage, null);
+                
+                System.out.println("Package created and assembled successfully: " + packageName);
+            } else {
+                System.out.println("Error: Package could not be created or opened.");
+            }
         } catch (RepositoryException | IOException e) {
             e.printStackTrace();
         } finally {
-            // Logout session if applicable
+            // Close session after operation
             if (session != null) {
                 session.logout();
             }
@@ -200,7 +203,7 @@ public class AEMPackageCreator {
 
     public static void main(String[] args) {
         // Initialize a session (replace with your JCR session initialization)
-        Session session = ...;
+        Session session = ...; // Obtain session from repository login.
 
         AEMPackageCreator creator = new AEMPackageCreator(session);
         String packageGroup = "my_packages";
