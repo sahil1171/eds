@@ -7,188 +7,136 @@ import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.SlingHttpServletResponse;
 import org.apache.sling.api.servlets.SlingAllMethodsServlet;
 import org.apache.sling.api.resource.ResourceResolver;
-import org.apache.sling.api.servlets.ServletResolverConstants;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.sling.api.resource.Resource;
-import org.apache.jackrabbit.api.JackrabbitEventFilter;
-import org.apache.sling.api.resource.ModifiableValueMap;
-import org.apache.sling.api.scripting.SlingScriptHelper;
-import javax.jcr.Node;
+
 import javax.jcr.Session;
 import javax.servlet.Servlet;
-import org.apache.sling.api.servlets.ServletResolverConstants;
-import org.osgi.framework.Constants;
-import org.apache.sling.api.servlets.SlingSafeMethodsServlet;
-import org.apache.sling.api.resource.ValueMap;
-
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.List;
+import java.util.*;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-@Component(service = Servlet.class,
-           property = {
-               ServletResolverConstants.SLING_SERVLET_PATHS + "=/bin/findlinks",
-               ServletResolverConstants.SLING_SERVLET_METHODS + "=GET"
-           })
-public class FindLinksServlet extends SlingAllMethodsServlet {
+import org.apache.jackrabbit.vault.fs.api.PathFilterSet;
+import org.apache.jackrabbit.vault.fs.api.ProgressTrackerListener;
+import org.apache.jackrabbit.vault.fs.config.DefaultWorkspaceFilter;
+import org.apache.jackrabbit.vault.fs.io.ImportOptions;
+import org.apache.jackrabbit.vault.packaging.JcrPackage;
+import org.apache.jackrabbit.vault.packaging.JcrPackageDefinition;
+import org.apache.jackrabbit.vault.packaging.JcrPackageManager;
+import org.apache.jackrabbit.vault.util.DefaultProgressListener;
 
-    private static final Logger LOG = LoggerFactory.getLogger(FindLinksServlet.class);
+@Component(service = Servlet.class, 
+          property = {
+              "sling.servlet.paths=/bin/findlinksandcreatepackage",
+              "sling.servlet.methods=GET"
+          })
+public class FindLinksAndCreatePackageServlet extends SlingAllMethodsServlet {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FindLinksAndCreatePackageServlet.class);
 
     @Reference
     private QueryBuilder queryBuilder;
 
     @Override
     protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws IOException {
-        LOG.info("Received request to find active pages and retrieve all links.");
+        LOG.info("Started servlet to find links and create AEM package.");
 
         ResourceResolver resourceResolver = request.getResourceResolver();
         Session session = resourceResolver.adaptTo(Session.class);
-
         if (session == null) {
-            LOG.error("Could not obtain JCR session.");
             response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not obtain JCR session.");
             return;
         }
 
         String resourceType = request.getParameter("resourceType");
-        LOG.info("Initiating query for resourceType: {}", resourceType);
+        String packageName = request.getParameter("packageName");
+        String groupName = request.getParameter("groupName");
 
         try {
-            // Query setup
-            Map<String, String> queryMap = new HashMap<>();
-            queryMap.put("path", "/content");
-            queryMap.put("type", "cq:PageContent");
-            queryMap.put("property", "sling:resourceType");
-            queryMap.put("property.value", resourceType);
-            queryMap.put("property.1_property", "cq:lastReplicationAction");
-            queryMap.put("property.1_property.value", "Activate");
-            queryMap.put("p.limit", "-1");
+            // Query to get all active pages of specified resourceType
+            List<String> pagePaths = getActivePagePaths(resourceResolver, resourceType);
 
-            LOG.debug("Query map parameters: {}", queryMap);
-
-            PredicateGroup predicateGroup = PredicateGroup.create(queryMap);
-            Query query = queryBuilder.createQuery(predicateGroup, session);
-            SearchResult searchResult = query.getResult();
-
-            List<Hit> hits = searchResult.getHits();
-            LOG.info("Found {} active pages for resource type: {}", hits.size(), resourceType);
-
-            StringBuilder responseContent = new StringBuilder();
-
-            Set<String> allLinks = new HashSet<>();
-            for (Hit hit : hits) {
-                String pagePath = hit.getPath();
+            // Get unique links from active pages
+            Set<String> filteredLinks = new HashSet<>();
+            for (String pagePath : pagePaths) {
                 String pageUrl = "http://<host>:4503" + pagePath + ".html";  // Replace <host> with actual host
-
-                LOG.debug("Processing page at path: {}, full URL: {}", pagePath, pageUrl);
-
-                try {
-                    Set<String> links = getAllLinksFromPage(pageUrl);
-
-                    allLinks.addAll(links);
-
-                    responseContent.append("Active page: ").append(pagePath).append("\n");
-                    LOG.info("Found {} links on page: {}", links.size(), pagePath);
-
-                    for (String link : links) {
-                        responseContent.append(" - Link: ").append(link).append("\n");
-                        LOG.debug("Link found: {}", link);
-                    }
-
-                } catch (IOException e) {
-                    LOG.error("Error connecting to page URL: {}", pageUrl, e);
-                }
+                filteredLinks.addAll(getFilteredLinks(pageUrl));
             }
 
-            // Create a package and add the links as filter entries
-            createPackageWithLinks(allLinks, resourceResolver);
+            // Create package in AEM Package Manager
+            createPackage(session, groupName, packageName, filteredLinks);
 
-            // Write the response
-            response.setContentType("text/plain");
-            response.getWriter().write(responseContent.toString());
-            LOG.info("Response successfully sent with all links for active pages.");
+            response.getWriter().write("Package created successfully with filtered links as entries!");
 
         } catch (Exception e) {
-            LOG.error("Error executing query to find active pages", e);
-            response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error finding active pages.");
+            LOG.error("Error in processing links or creating package: {}", e.getMessage());
+            response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error in processing links or creating package.");
         } finally {
             if (session != null && session.isLive()) {
                 session.logout();
-                LOG.info("Session successfully logged out.");
             }
         }
     }
 
-    // Helper method to get all links from a page
-    private Set<String> getAllLinksFromPage(String url) throws IOException {
+    private List<String> getActivePagePaths(ResourceResolver resourceResolver, String resourceType) {
+        List<String> pagePaths = new ArrayList<>();
+        Map<String, String> queryMap = new HashMap<>();
+        queryMap.put("path", "/content");
+        queryMap.put("type", "cq:PageContent");
+        queryMap.put("property", "sling:resourceType");
+        queryMap.put("property.value", resourceType);
+        queryMap.put("property.1_property", "cq:lastReplicationAction");
+        queryMap.put("property.1_property.value", "Activate");
+        queryMap.put("p.limit", "-1");
+
+        Query query = queryBuilder.createQuery(PredicateGroup.create(queryMap), resourceResolver.adaptTo(Session.class));
+        SearchResult searchResult = query.getResult();
+
+        for (Hit hit : searchResult.getHits()) {
+            try {
+                pagePaths.add(hit.getPath());
+            } catch (Exception e) {
+                LOG.error("Error getting path from search hit: {}", e.getMessage());
+            }
+        }
+        return pagePaths;
+    }
+
+    private Set<String> getFilteredLinks(String pageUrl) throws IOException {
         Set<String> links = new HashSet<>();
-        LOG.debug("Connecting to page URL: {}", url);
+        Document doc = Jsoup.connect(pageUrl).get();
 
-        Document doc = Jsoup.connect(url)
-                .userAgent("Mozilla")
-                .timeout(5000)
-                .get();
-
-        LOG.debug("Connected to page URL successfully. Scanning for links.");
-
-        // Extracting links
-        Elements elements = doc.select("a[href]"); // Select all <a> tags with href attribute
+        // Get anchor and image links containing 'cdn' and '/aempros/content/dam'
+        Elements elements = doc.select("a[href], img[src]");
         for (Element element : elements) {
-            String href = element.attr("abs:href");
-            if (href.contains("cdn") && href.contains("/aempros/content/dam")) {
-                links.add(href);
-                LOG.debug("Link extracted: {}", href);
+            String link = element.hasAttr("href") ? element.attr("abs:href") : element.attr("abs:src");
+            if (link.contains("cdn") && link.contains("/aempros/content/dam")) {
+                links.add(link);
             }
         }
-
-        // Extracting image links
-        Elements imageElements = doc.select("img[src]"); // Select <img> tags with src attribute
-        for (Element element : imageElements) {
-            String src = element.attr("abs:src");
-            if (src.contains("cdn") && src.contains("/aempros/content/dam")) {
-                links.add(src);
-                LOG.debug("Image link extracted: {}", src);
-            }
-        }
-
-        LOG.info("Total links found on page {}: {}", url, links.size());
         return links;
     }
 
-    // Create a package with all the links as filter entries
-    private void createPackageWithLinks(Set<String> links, ResourceResolver resourceResolver) {
-        try {
-            // Create a package in Package Manager
-            String packagePath = "/etc/packages/your-package-name.zip";
-            String packageGroup = "your-group";
+    private void createPackage(Session session, String groupName, String packageName, Set<String> filterPaths) throws Exception {
+        JcrPackageManager packageManager = PackagingService.getPackageManager(session);
+        JcrPackage jcrPackage = packageManager.create(groupName, packageName);
 
-            // Logic to add the links to the package as filter entries
-            for (String link : links) {
-                // Assuming adding the links as entries into the package filter
-                Map<String, String> filterMap = new HashMap<>();
-                filterMap.put("sling:resourceType", "your-resource-type");
-                filterMap.put("filter", link);
-
-                // Example of creating a filter entry in Jackrabbit (modify as needed)
-                Node node = resourceResolver.adaptTo(Session.class).getNode(packagePath);
-                ModifiableValueMap modifiableValueMap = (ModifiableValueMap) node;
-                modifiableValueMap.put("filter", filterMap);
-                resourceResolver.commit();
-            }
-            LOG.info("Package created and links added as filter entries.");
-
-        } catch (Exception e) {
-            LOG.error("Error creating package and adding filter entries", e);
+        DefaultWorkspaceFilter filter = new DefaultWorkspaceFilter();
+        for (String path : filterPaths) {
+            PathFilterSet pathFilterSet = new PathFilterSet(path);
+            filter.add(pathFilterSet);
         }
+
+        JcrPackageDefinition definition = jcrPackage.getDefinition();
+        definition.setFilter(filter, true);
+
+        ImportOptions importOptions = new ImportOptions();
+        jcrPackage.install(importOptions);
     }
 }
