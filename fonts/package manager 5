@@ -1,0 +1,141 @@
+import com.day.cq.search.Query;
+import com.day.cq.search.QueryBuilder;
+import com.day.cq.search.PredicateGroup;
+import com.day.cq.search.result.Hit;
+import com.day.cq.search.result.SearchResult;
+import org.apache.sling.api.SlingHttpServletRequest;
+import org.apache.sling.api.SlingHttpServletResponse;
+import org.apache.sling.api.servlets.SlingAllMethodsServlet;
+import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.api.servlets.ServletResolverConstants;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.jcr.Session;
+import javax.servlet.Servlet;
+import java.io.IOException;
+import java.util.*;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+@Component(service = Servlet.class,
+           property = {
+               ServletResolverConstants.SLING_SERVLET_PATHS + "=/bin/findlinks",
+               ServletResolverConstants.SLING_SERVLET_METHODS + "=GET"
+           })
+public class FindLinksServlet extends SlingAllMethodsServlet {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FindLinksServlet.class);
+
+    @Reference
+    private QueryBuilder queryBuilder;
+
+    @Override
+    protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws IOException {
+        LOG.info("Received request to find active pages and retrieve filtered links.");
+
+        ResourceResolver resourceResolver = request.getResourceResolver();
+        Session session = resourceResolver.adaptTo(Session.class);
+
+        if (session == null) {
+            LOG.error("Could not obtain JCR session.");
+            response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not obtain JCR session.");
+            return;
+        }
+
+        try {
+            // Setup query to get active pages
+            Map<String, String> queryMap = new HashMap<>();
+            queryMap.put("path", "/content/etrade/retail/en_US/pages");
+            queryMap.put("type", "cq:PageContent");
+            queryMap.put("property", "sling:resourceType");
+            queryMap.put("property.1_property", "cq:lastReplicationAction");
+            queryMap.put("property.1_property.value", "Activate");
+            queryMap.put("p.limit", "-1");
+
+            PredicateGroup predicateGroup = PredicateGroup.create(queryMap);
+            Query query = queryBuilder.createQuery(predicateGroup, session);
+            SearchResult searchResult = query.getResult();
+
+            List<Hit> hits = searchResult.getHits();
+            Set<String> allLinks = new HashSet<>();
+
+            for (Hit hit : hits) {
+                String pagePath = hit.getPath();
+                String pageUrl = "http://dit15w220m7:4503" + pagePath + ".html";
+
+                try {
+                    Set<String> filteredLinks = getFilteredLinksFromPage(pageUrl);
+                    allLinks.addAll(filteredLinks);
+
+                } catch (IOException e) {
+                    LOG.error("Error connecting to page URL: {}", pageUrl, e);
+                }
+            }
+
+            if (!allLinks.isEmpty()) {
+                createPackageWithLinks(session, allLinks);
+                response.getWriter().write("Package created with all links as filters.");
+            } else {
+                response.getWriter().write("No links found to add to the package.");
+            }
+
+            response.setContentType("text/plain");
+
+        } catch (Exception e) {
+            LOG.error("Error executing query to find active pages", e);
+            response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error finding active pages.");
+        } finally {
+            if (session != null && session.isLive()) {
+                session.logout();
+            }
+        }
+    }
+
+    private Set<String> getFilteredLinksFromPage(String url) throws IOException {
+        Set<String> links = new HashSet<>();
+        Document doc = Jsoup.connect(url).userAgent("Mozilla").timeout(5000).get();
+
+        Pattern pattern = Pattern.compile(".*(cdn|/aempros/content/dam).*");
+
+        Elements elements = doc.select("a[href], [src]");
+        for (Element element : elements) {
+            String href = element.tagName().equals("a") ? element.attr("abs:href") : element.attr("abs:src");
+
+            Matcher matcher = pattern.matcher(href);
+            if (matcher.matches()) {
+                links.add(href);
+                LOG.debug("Filtered link extracted: {}", href);
+            }
+        }
+        return links;
+    }
+
+    private void createPackageWithLinks(Session session, Set<String> links) {
+        try {
+            JcrPackageManager packageManager = PackagingService.getPackageManager(session);
+            JcrPackage jcrPackage = packageManager.create("my_packages", "link_package", "1.0");
+            JcrPackageDefinition definition = jcrPackage.getDefinition();
+
+            if (definition != null) {
+                List<PathFilterSet> filterSets = new ArrayList<>();
+                for (String link : links) {
+                    PathFilterSet filterSet = new PathFilterSet(link);
+                    filterSets.add(filterSet);
+                }
+                definition.getMetaInf().getFilter().setFilterSets(filterSets);
+            }
+            session.save();
+            LOG.info("Package created successfully with links as filters.");
+        } catch (RepositoryException e) {
+            LOG.error("Error creating package with links", e);
+        }
+    }
+}
