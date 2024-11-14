@@ -1,0 +1,192 @@
+import com.day.cq.search.Query;
+import com.day.cq.search.QueryBuilder;
+import com.day.cq.search.PredicateGroup;
+import com.day.cq.search.result.Hit;
+import com.day.cq.search.result.SearchResult;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.jackrabbit.vault.fs.api.PathFilterSet;
+import org.apache.jackrabbit.vault.fs.api.ProgressTrackerListener;
+import org.apache.jackrabbit.vault.fs.config.DefaultWorkspaceFilter;
+import org.apache.jackrabbit.vault.fs.io.ImportOptions;
+import org.apache.jackrabbit.vault.packaging.JcrPackage;
+import org.apache.jackrabbit.vault.packaging.JcrPackageDefinition;
+import org.apache.jackrabbit.vault.packaging.JcrPackageManager;
+import org.apache.jackrabbit.vault.packaging.PackagingService;
+import org.apache.jackrabbit.vault.util.DefaultProgressListener;
+import org.apache.sling.api.SlingHttpServletRequest;
+import org.apache.sling.api.SlingHttpServletResponse;
+import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.api.servlets.HttpConstants;
+import org.apache.sling.api.servlets.SlingAllMethodsServlet;
+import org.apache.sling.api.servlets.ServletResolverConstants;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+import org.osgi.framework.Constants;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.jcr.Session;
+import javax.servlet.Servlet;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+@Component(service = Servlet.class, property = {
+        Constants.SERVICE_DESCRIPTION + "= Find Links and Create Package",
+        ServletResolverConstants.SLING_SERVLET_PATHS + "=/bin/findLinksAndCreatePackage",
+        ServletResolverConstants.SLING_SERVLET_METHODS + "=GET"
+})
+public class FindLinksAndCreatePackageServlet extends SlingAllMethodsServlet {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FindLinksAndCreatePackageServlet.class);
+
+    @Reference
+    private QueryBuilder queryBuilder;
+
+    @Override
+    protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws IOException {
+        LOG.info("Received request to find active pages, retrieve all links, and create a package.");
+
+        ResourceResolver resourceResolver = request.getResourceResolver();
+        Session session = resourceResolver.adaptTo(Session.class);
+
+        if (session == null) {
+            LOG.error("Could not obtain JCR session.");
+            response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not obtain JCR session.");
+            return;
+        }
+
+        String resourceType = request.getParameter("resourceType");
+        String packageName = request.getParameter("packageName");
+        String groupName = request.getParameter("groupName");
+
+        LOG.info("Initiating query for resourceType: {}", resourceType);
+
+        try {
+            // Step 1: Query to find active pages
+            Map<String, String> queryMap = new HashMap<>();
+            queryMap.put("path", "/content");
+            queryMap.put("type", "cq:PageContent");
+            queryMap.put("property", "sling:resourceType");
+            queryMap.put("property.value", resourceType);
+            queryMap.put("property.1_property", "cq:lastReplicationAction");
+            queryMap.put("property.1_property.value", "Activate");
+            queryMap.put("p.limit", "-1");
+
+            LOG.debug("Query map parameters: {}", queryMap);
+
+            PredicateGroup predicateGroup = PredicateGroup.create(queryMap);
+            Query query = queryBuilder.createQuery(predicateGroup, session);
+            SearchResult searchResult = query.getResult();
+
+            List<Hit> hits = searchResult.getHits();
+            LOG.info("Found {} active pages for resource type: {}", hits.size(), resourceType);
+
+            // Step 2: Collect unique links from each page
+            Set<String> uniqueLinks = new HashSet<>();
+
+            for (Hit hit : hits) {
+                String pagePath = hit.getPath();
+                String pageUrl = "http://<host>:4503" + pagePath + ".html";  // Replace <host> with actual host
+
+                LOG.debug("Processing page at path: {}, full URL: {}", pagePath, pageUrl);
+
+                try {
+                    uniqueLinks.addAll(getAllLinksFromPage(pageUrl));
+                } catch (IOException e) {
+                    LOG.error("Error connecting to page URL: {}", pageUrl, e);
+                }
+            }
+
+            // Step 3: Create a package in Package Manager and add all unique links as filters
+            if (!StringUtils.isAnyBlank(packageName, groupName) && !uniqueLinks.isEmpty()) {
+                createPackageWithLinks(session, packageName, groupName, uniqueLinks);
+                response.getWriter().write("Package created successfully with all unique links as filters!");
+                LOG.info("Package created successfully with {} unique links.", uniqueLinks.size());
+            } else {
+                response.sendError(SlingHttpServletResponse.SC_BAD_REQUEST, "Package name, group name, or links are missing.");
+            }
+
+        } catch (Exception e) {
+            LOG.error("Error processing request", e);
+            response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error processing request.");
+        } finally {
+            if (session != null && session.isLive()) {
+                session.logout();
+                LOG.info("Session successfully logged out.");
+            }
+        }
+    }
+
+    // Helper method to get all links from a page
+    private Set<String> getAllLinksFromPage(String url) throws IOException {
+        Set<String> links = new HashSet<>();
+        LOG.debug("Connecting to page URL: {}", url);
+
+        Document doc = Jsoup.connect(url)
+                .userAgent("Mozilla")
+                .timeout(5000)
+                .get();
+
+        LOG.debug("Connected to page URL successfully. Scanning for links.");
+
+        Elements anchorElements = doc.select("a[href]");
+        Elements imageElements = doc.select("img[src]");
+
+        for (Element element : anchorElements) {
+            String href = element.attr("abs:href");
+            if (href.contains("cdn") && href.contains("/aempros/content/dam")) {
+                links.add(href);
+                LOG.debug("Link extracted: {}", href);
+            }
+        }
+
+        for (Element element : imageElements) {
+            String src = element.attr("abs:src");
+            if (src.contains("cdn") && src.contains("/aempros/content/dam")) {
+                links.add(src);
+                LOG.debug("Image link extracted: {}", src);
+            }
+        }
+
+        LOG.info("Total links found on page {}: {}", url, links.size());
+        return links;
+    }
+
+    // Helper method to create a package with the provided links as filters
+    private void createPackageWithLinks(Session session, String packageName, String groupName, Set<String> uniqueLinks) {
+        try {
+            JcrPackageManager jcrPackageManager = PackagingService.getPackageManager(session);
+            JcrPackage jcrPackage = jcrPackageManager.create(groupName, packageName);
+            JcrPackageDefinition definition = jcrPackage.getDefinition();
+
+            DefaultWorkspaceFilter filter = new DefaultWorkspaceFilter();
+            for (String link : uniqueLinks) {
+                PathFilterSet pathFilterSet = new PathFilterSet();
+                pathFilterSet.setRoot(link);
+                filter.add(pathFilterSet);
+            }
+
+            assert definition != null;
+            definition.setFilter(filter, true);
+
+            ProgressTrackerListener listener = new DefaultProgressListener();
+            jcrPackageManager.assemble(jcrPackage, listener);
+
+            ImportOptions importOptions = new ImportOptions();
+            jcrPackage.install(importOptions);
+
+            LOG.info("Package '{}' with group '{}' created and installed successfully.", packageName, groupName);
+
+        } catch (Exception e) {
+            LOG.error("Error in package creation and installation: {}", e.getMessage(), e);
+        }
+    }
+}
