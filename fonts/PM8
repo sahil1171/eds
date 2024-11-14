@@ -157,6 +157,8 @@ public class FindLinksServlet extends SlingAllMethodsServlet {
             Package pkg = packageManager.createPackage("/etc/packages/my-generated-package.zip", true);
 
             if (pkg != null) {
+                LOG.info("New package created at /etc/packages/my-generated-package.zip");
+
                 for (String link : links) {
                     // Add each link as a filter entry in the package
                     pkg.getMetaInf().getFilter().addFilter(link);
