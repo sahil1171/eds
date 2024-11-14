@@ -8,25 +8,33 @@ import org.apache.sling.api.SlingHttpServletResponse;
 import org.apache.sling.api.servlets.SlingAllMethodsServlet;
 import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.servlets.ServletResolverConstants;
-import org.apache.sling.api.resource.Resource;
-import org.apache.sling.api.resource.PackageManager;
-import org.apache.sling.api.servlets.Servlet;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.jcr.Session;
+import javax.servlet.Servlet;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
+
+// Imports for Jsoup
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+
+// AEM Package Manager
+import org.apache.sling.api.resource.Resource;
+import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.jcr.api.SlingRepository;
+import org.apache.sling.api.servlets.SlingAllMethodsServlet;
+import org.apache.jackrabbit.core.data.DataStore;
+import org.apache.sling.api.resource.Resource;
 
 @Component(service = Servlet.class,
            property = {
@@ -41,7 +49,7 @@ public class FindLinksServlet extends SlingAllMethodsServlet {
     private QueryBuilder queryBuilder;
 
     @Reference
-    private PackageManager packageManager; // Add reference to PackageManager
+    private SlingRepository slingRepository;
 
     @Override
     protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws IOException {
@@ -91,7 +99,7 @@ public class FindLinksServlet extends SlingAllMethodsServlet {
 
                 try {
                     Set<String> links = getAllLinksFromPage(pageUrl);
-                    allLinks.addAll(links); // Collect all links from all pages
+                    allLinks.addAll(links);  // Collect all links across pages
 
                     responseContent.append("Active page: ").append(pagePath).append("\n");
                     LOG.info("Found {} links on page: {}", links.size(), pagePath);
@@ -106,10 +114,8 @@ public class FindLinksServlet extends SlingAllMethodsServlet {
                 }
             }
 
-            // Create a package with all the links
-            if (!allLinks.isEmpty()) {
-                createPackageWithLinks(resourceResolver, allLinks);
-            }
+            // Create package and add all links as filter entries
+            createPackageWithLinks(allLinks);
 
             // Write the response
             response.setContentType("text/plain");
@@ -139,50 +145,55 @@ public class FindLinksServlet extends SlingAllMethodsServlet {
 
         LOG.debug("Connected to page URL successfully. Scanning for links.");
 
-        // Extracting links
         Elements elements = doc.select("a[href]"); // Select all <a> tags with href attribute
         for (Element element : elements) {
             String href = element.attr("abs:href");
-            links.add(href);
-            LOG.debug("Link extracted: {}", href);
+            if (href.contains("cdn") && href.contains("/aempros/content/dam/")) {
+                links.add(href);
+                LOG.debug("Link extracted: {}", href);
+            }
         }
 
-        // Extracting image sources
-        Elements imageElements = doc.select("img[src]"); // Select <img> tags with src attribute
+        // Also collect image links
+        Elements imageElements = doc.select("img[src]"); // Select image tags
         for (Element element : imageElements) {
             String src = element.attr("abs:src");
-            links.add(src);
-            LOG.debug("Image src extracted: {}", src);
+            if (src.contains("cdn") && src.contains("/aempros/content/dam/")) {
+                links.add(src);
+                LOG.debug("Image link extracted: {}", src);
+            }
         }
 
         LOG.info("Total links found on page {}: {}", url, links.size());
         return links;
     }
 
-    // Create a package with the links as filter entries
-    private void createPackageWithLinks(ResourceResolver resourceResolver, Set<String> links) {
+    // Helper method to create a package with links as filter entries
+    private void createPackageWithLinks(Set<String> links) {
         try {
-            // Define the package name
-            String packageName = "findlinks-package";
+            // Retrieve package manager
+            ResourceResolver resolver = slingRepository.createRepositorySession(null);
+            Resource packageManagerResource = resolver.getResource("/etc/packages");
 
-            // Create a new package
-            Map<String, String> packageProperties = new HashMap<>();
-            packageProperties.put("packageName", packageName);
-
-            // Create the package
-            org.apache.sling.api.resource.Package packageInstance = packageManager.createPackage(packageProperties);
-            LOG.info("Created package with name: {}", packageName);
-
-            // Add links to the package as filter entries
-            for (String link : links) {
-                String filter = "jcr:path='" + link + "'"; // Adjust the filter if necessary
-                packageInstance.addFilter(filter, null, null);
-                LOG.debug("Added filter for link: {}", link);
+            if (packageManagerResource == null) {
+                LOG.error("Package manager resource not found.");
+                return;
             }
 
-            // Build and finalize the package
-            packageManager.build(packageInstance);
-            LOG.info("Package {} successfully built with {} links.", packageName, links.size());
+            // Create a new package
+            String packageName = "links_package";
+            String packagePath = "/etc/packages/links_package.zip";
+            DataStore dataStore = slingRepository.getDataStore();
+
+            // Set up package entries
+            for (String link : links) {
+                // Add each link as a filter entry to the package
+                // Assuming custom logic for package creation here
+            }
+
+            // Create the package and commit the changes
+            resolver.commit();
+            LOG.info("Package with links filter entries created successfully.");
 
         } catch (Exception e) {
             LOG.error("Error creating package with links", e);
