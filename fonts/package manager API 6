@@ -1,0 +1,191 @@
+import com.day.cq.search.Query;
+import com.day.cq.search.QueryBuilder;
+import com.day.cq.search.PredicateGroup;
+import com.day.cq.search.result.Hit;
+import com.day.cq.search.result.SearchResult;
+import org.apache.sling.api.SlingHttpServletRequest;
+import org.apache.sling.api.SlingHttpServletResponse;
+import org.apache.sling.api.servlets.SlingAllMethodsServlet;
+import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.api.servlets.ServletResolverConstants;
+import org.apache.sling.api.resource.Resource;
+import org.apache.sling.api.resource.PackageManager;
+import org.apache.sling.api.servlets.Servlet;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Reference;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.jcr.Session;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+@Component(service = Servlet.class,
+           property = {
+               ServletResolverConstants.SLING_SERVLET_PATHS + "=/bin/findlinks",
+               ServletResolverConstants.SLING_SERVLET_METHODS + "=GET"
+           })
+public class FindLinksServlet extends SlingAllMethodsServlet {
+
+    private static final Logger LOG = LoggerFactory.getLogger(FindLinksServlet.class);
+
+    @Reference
+    private QueryBuilder queryBuilder;
+
+    @Reference
+    private PackageManager packageManager; // Add reference to PackageManager
+
+    @Override
+    protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws IOException {
+        LOG.info("Received request to find active pages and retrieve all links.");
+
+        ResourceResolver resourceResolver = request.getResourceResolver();
+        Session session = resourceResolver.adaptTo(Session.class);
+
+        if (session == null) {
+            LOG.error("Could not obtain JCR session.");
+            response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Could not obtain JCR session.");
+            return;
+        }
+
+        String resourceType = request.getParameter("resourceType");
+        LOG.info("Initiating query for resourceType: {}", resourceType);
+
+        try {
+            // Query setup
+            Map<String, String> queryMap = new HashMap<>();
+            queryMap.put("path", "/content");
+            queryMap.put("type", "cq:PageContent");
+            queryMap.put("property", "sling:resourceType");
+            queryMap.put("property.value", resourceType);
+            queryMap.put("property.1_property", "cq:lastReplicationAction");
+            queryMap.put("property.1_property.value", "Activate");
+            queryMap.put("p.limit", "-1");
+
+            LOG.debug("Query map parameters: {}", queryMap);
+
+            PredicateGroup predicateGroup = PredicateGroup.create(queryMap);
+            Query query = queryBuilder.createQuery(predicateGroup, session);
+            SearchResult searchResult = query.getResult();
+
+            List<Hit> hits = searchResult.getHits();
+            LOG.info("Found {} active pages for resource type: {}", hits.size(), resourceType);
+
+            StringBuilder responseContent = new StringBuilder();
+
+            Set<String> allLinks = new HashSet<>();
+
+            for (Hit hit : hits) {
+                String pagePath = hit.getPath();
+                String pageUrl = "http://<host>:4503" + pagePath + ".html";  // Replace <host> with actual host
+
+                LOG.debug("Processing page at path: {}, full URL: {}", pagePath, pageUrl);
+
+                try {
+                    Set<String> links = getAllLinksFromPage(pageUrl);
+                    allLinks.addAll(links); // Collect all links from all pages
+
+                    responseContent.append("Active page: ").append(pagePath).append("\n");
+                    LOG.info("Found {} links on page: {}", links.size(), pagePath);
+
+                    for (String link : links) {
+                        responseContent.append(" - Link: ").append(link).append("\n");
+                        LOG.debug("Link found: {}", link);
+                    }
+
+                } catch (IOException e) {
+                    LOG.error("Error connecting to page URL: {}", pageUrl, e);
+                }
+            }
+
+            // Create a package with all the links
+            if (!allLinks.isEmpty()) {
+                createPackageWithLinks(resourceResolver, allLinks);
+            }
+
+            // Write the response
+            response.setContentType("text/plain");
+            response.getWriter().write(responseContent.toString());
+            LOG.info("Response successfully sent with all links for active pages.");
+
+        } catch (Exception e) {
+            LOG.error("Error executing query to find active pages", e);
+            response.sendError(SlingHttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Error finding active pages.");
+        } finally {
+            if (session != null && session.isLive()) {
+                session.logout();
+                LOG.info("Session successfully logged out.");
+            }
+        }
+    }
+
+    // Helper method to get all links from a page
+    private Set<String> getAllLinksFromPage(String url) throws IOException {
+        Set<String> links = new HashSet<>();
+        LOG.debug("Connecting to page URL: {}", url);
+
+        Document doc = Jsoup.connect(url)
+                .userAgent("Mozilla")
+                .timeout(5000)
+                .get();
+
+        LOG.debug("Connected to page URL successfully. Scanning for links.");
+
+        // Extracting links
+        Elements elements = doc.select("a[href]"); // Select all <a> tags with href attribute
+        for (Element element : elements) {
+            String href = element.attr("abs:href");
+            links.add(href);
+            LOG.debug("Link extracted: {}", href);
+        }
+
+        // Extracting image sources
+        Elements imageElements = doc.select("img[src]"); // Select <img> tags with src attribute
+        for (Element element : imageElements) {
+            String src = element.attr("abs:src");
+            links.add(src);
+            LOG.debug("Image src extracted: {}", src);
+        }
+
+        LOG.info("Total links found on page {}: {}", url, links.size());
+        return links;
+    }
+
+    // Create a package with the links as filter entries
+    private void createPackageWithLinks(ResourceResolver resourceResolver, Set<String> links) {
+        try {
+            // Define the package name
+            String packageName = "findlinks-package";
+
+            // Create a new package
+            Map<String, String> packageProperties = new HashMap<>();
+            packageProperties.put("packageName", packageName);
+
+            // Create the package
+            org.apache.sling.api.resource.Package packageInstance = packageManager.createPackage(packageProperties);
+            LOG.info("Created package with name: {}", packageName);
+
+            // Add links to the package as filter entries
+            for (String link : links) {
+                String filter = "jcr:path='" + link + "'"; // Adjust the filter if necessary
+                packageInstance.addFilter(filter, null, null);
+                LOG.debug("Added filter for link: {}", link);
+            }
+
+            // Build and finalize the package
+            packageManager.build(packageInstance);
+            LOG.info("Package {} successfully built with {} links.", packageName, links.size());
+
+        } catch (Exception e) {
+            LOG.error("Error creating package with links", e);
+        }
+    }
+}
