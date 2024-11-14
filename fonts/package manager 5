@@ -139,3 +139,36 @@ public class FindLinksServlet extends SlingAllMethodsServlet {
         }
     }
 }
+
+==============================================================================================================
+
+private void createPackageWithLinks(Session session, Set<String> links) {
+    try {
+        JcrPackageManager packageManager = PackagingService.getPackageManager(session);
+        String groupName = "my_packages";
+        String packageName = "link_package";
+        String version = "1.0";
+
+        // Check if the package already exists
+        if (packageManager.getPackage(groupName, packageName, version) != null) {
+            LOG.warn("Package with the same name and version already exists. Deleting the existing package.");
+            packageManager.removePackage(groupName, packageName, version);
+        }
+
+        // Create a new package
+        JcrPackage jcrPackage = packageManager.create(groupName, packageName, version);
+        JcrPackageDefinition definition = jcrPackage.getDefinition();
+        
+        if (definition != null) {
+            WorkspaceFilter workspaceFilter = definition.getMetaInf().getFilter();
+            for (String link : links) {
+                PathFilterSet filterSet = new PathFilterSet(link);
+                workspaceFilter.add(filterSet); // Use add() to add each PathFilterSet
+            }
+        }
+        session.save();
+        LOG.info("Package created successfully with links as filters.");
+    } catch (RepositoryException e) {
+        LOG.error("Error creating package with links", e);
+    }
+}
