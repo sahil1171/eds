@@ -214,3 +214,68 @@ public class AEMPackageCreator {
         creator.createPackage(packageGroup, packageName, packageVersion, filterPath);
     }
 }
+
+jjjjjjjjjjjjjjjjjjjjjjjjjaaaaaaaaaaaaaaaaaaaaaaaavvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvaaaaaaaaaaaaaaaaaaaaaaaaaa
+
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class PackageCreationExample {
+
+    private String packageName = "";
+    private String groupName = "";
+    private List<String> filterPaths;
+
+    public PackageCreationExample(String packageName, String groupName) {
+        this.packageName = packageName;
+        this.groupName = groupName;
+
+        // Initialize filter paths
+        filterPaths = new ArrayList<>();
+        filterPaths.add("/content/learning/us/en/samplePage");
+        filterPaths.add("/content/learning/us/en/learningPage");
+    }
+
+    public void createPackage() {
+        System.out.println("Creating package...");
+        
+        // Simulate setting up filters for the package
+        System.out.println("Setting up filters:");
+        for (String filterPath : filterPaths) {
+            System.out.println("Filter path: " + filterPath);
+        }
+
+        // Simulate package assembly
+        try {
+            System.out.println("Assembling package...");
+            Thread.sleep(1000); // simulate time for package assembly
+            System.out.println("Package assembled successfully.");
+
+            // Simulate package installation
+            installPackage();
+        } catch (InterruptedException e) {
+            System.err.println("Error during package creation: " + e.getMessage());
+        }
+    }
+
+    private void installPackage() {
+        System.out.println("Installing package...");
+        // Simulate installation
+        try {
+            Thread.sleep(500); // simulate installation time
+            System.out.println("Package installed successfully!");
+        } catch (InterruptedException e) {
+            System.err.println("Error during package installation: " + e.getMessage());
+        }
+    }
+
+    public static void main(String[] args) {
+        String packageName = "sample";
+        String groupName = "my_packages";
+
+        PackageCreationExample packageCreator = new PackageCreationExample(packageName, groupName);
+        packageCreator.createPackage();
+    }
+}
+
