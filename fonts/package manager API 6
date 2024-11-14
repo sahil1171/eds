@@ -140,3 +140,74 @@ public class FindLinksAndCreatePackageServlet extends SlingAllMethodsServlet {
         jcrPackage.install(importOptions);
     }
 }
+
+
+]]]]]]]]]]]]]]]]]]]]]]\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+
+import org.apache.jackrabbit.vault.fs.api.PathFilterSet;
+import org.apache.jackrabbit.vault.packaging.JcrPackage;
+import org.apache.jackrabbit.vault.packaging.JcrPackageDefinition;
+import org.apache.jackrabbit.vault.packaging.JcrPackageManager;
+import org.apache.jackrabbit.vault.packaging.PackageManager;
+import org.apache.jackrabbit.vault.packaging.PackageSession;
+import org.apache.jackrabbit.vault.packaging.impl.JcrPackageManagerImpl;
+import org.apache.jackrabbit.vault.packaging.impl.PackageImpl;
+import org.apache.jackrabbit.vault.packaging.PackageManager;
+import org.apache.jackrabbit.vault.packaging.PackageSession;
+
+import javax.jcr.Node;
+import javax.jcr.RepositoryException;
+import javax.jcr.Session;
+import java.io.IOException;
+
+public class AEMPackageCreator {
+
+    private Session session;
+
+    public AEMPackageCreator(Session session) {
+        this.session = session;
+    }
+
+    public void createPackage(String packageGroup, String packageName, String packageVersion, String filterPath) {
+        try {
+            JcrPackageManager packageManager = new JcrPackageManagerImpl(session);
+
+            // Create the package in JCR repository
+            JcrPackage jcrPackage = packageManager.create(packageGroup, packageName, packageVersion);
+
+            // Define the package filters (paths to include in the package)
+            JcrPackageDefinition definition = jcrPackage.getDefinition();
+            if (definition != null) {
+                definition.getMetaInf().setFilter(new PathFilterSet(filterPath));
+            }
+
+            // Save the changes
+            session.save();
+
+            // Build the package
+            packageManager.assemble(jcrPackage, null);
+
+            System.out.println("Package created successfully: " + packageName);
+        } catch (RepositoryException | IOException e) {
+            e.printStackTrace();
+        } finally {
+            // Logout session if applicable
+            if (session != null) {
+                session.logout();
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        // Initialize a session (replace with your JCR session initialization)
+        Session session = ...;
+
+        AEMPackageCreator creator = new AEMPackageCreator(session);
+        String packageGroup = "my_packages";
+        String packageName = "image-links-package";
+        String packageVersion = "1.0";
+        String filterPath = "/content/dam/aempros/content/dam";
+
+        creator.createPackage(packageGroup, packageName, packageVersion, filterPath);
+    }
+}
