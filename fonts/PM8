@@ -3,9 +3,12 @@ import com.day.cq.search.QueryBuilder;
 import com.day.cq.search.PredicateGroup;
 import com.day.cq.search.result.Hit;
 import com.day.cq.search.result.SearchResult;
-import com.day.cq.package.Packaging;
-import com.day.cq.package.PackageManager;
-import com.day.cq.package.Package;
+import com.day.jcr.vault.packaging.PackageId;
+import com.day.jcr.vault.packaging.JcrPackage;
+import com.day.jcr.vault.packaging.JcrPackageManager;
+import com.day.jcr.vault.packaging.JcrPackageDefinition;
+import com.day.jcr.vault.fs.api.PathFilterSet;
+import com.day.jcr.vault.fs.api.FilterSet;
 import org.apache.sling.api.SlingHttpServletRequest;
 import org.apache.sling.api.SlingHttpServletResponse;
 import org.apache.sling.api.servlets.SlingAllMethodsServlet;
@@ -41,9 +44,6 @@ public class FindLinksServlet extends SlingAllMethodsServlet {
 
     @Reference
     private QueryBuilder queryBuilder;
-
-    @Reference
-    private Packaging packaging;
 
     @Override
     protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws IOException {
@@ -101,7 +101,7 @@ public class FindLinksServlet extends SlingAllMethodsServlet {
 
             // Create a package with all links as filter entries
             if (!allLinks.isEmpty()) {
-                createPackageWithLinks(resourceResolver, allLinks);
+                createPackageWithLinks(session, allLinks);
                 response.getWriter().write("Package created with all links.");
                 LOG.info("Package created with {} links.", allLinks.size());
             } else {
@@ -151,23 +151,32 @@ public class FindLinksServlet extends SlingAllMethodsServlet {
     }
 
     // Helper method to create a package with links as filter entries
-    private void createPackageWithLinks(ResourceResolver resourceResolver, Set<String> links) {
+    private void createPackageWithLinks(Session session, Set<String> links) {
         try {
-            PackageManager packageManager = packaging.getPackageManager(resourceResolver);
-            Package pkg = packageManager.createPackage("/etc/packages/my-generated-package.zip", true);
+            JcrPackageManager packageManager = session.getWorkspace().getPackageManager();
+            PackageId packageId = new PackageId("my_packages", "generated-links-package", "1.0");
+            JcrPackage jcrPackage = packageManager.create(packageId);
 
-            if (pkg != null) {
-                LOG.info("New package created at /etc/packages/my-generated-package.zip");
+            if (jcrPackage != null) {
+                JcrPackageDefinition definition = jcrPackage.getDefinition();
+                if (definition != null) {
+                    FilterSet filterSet = new FilterSet();
+                    for (String link : links) {
+                        filterSet.add(new PathFilterSet(link));
+                        LOG.debug("Added link to package filter: {}", link);
+                    }
+                    definition.setFilter(filterSet, session);
+                    LOG.info("Filters set in package with {} links.", links.size());
 
-                for (String link : links) {
-                    // Add each link as a filter entry in the package
-                    pkg.getMetaInf().getFilter().addFilter(link);
-                    LOG.debug("Added link to package filter: {}", link);
+                    // Save changes and close the package
+                    jcrPackage.close();
+                    session.save();
+                    LOG.info("Package created and saved with {} links.", links.size());
+                } else {
+                    LOG.error("Package definition is null, failed to create filters.");
                 }
-                packageManager.installPackage(pkg); // Install package if needed
-                LOG.info("Package created and installed with {} links.", links.size());
             } else {
-                LOG.error("Failed to create the package.");
+                LOG.error("Failed to create the JCR package.");
             }
         } catch (Exception e) {
             LOG.error("Error while creating the package with links", e);
