@@ -1,0 +1,47 @@
+public class SiteMapUtility {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SiteMapUtility.class);
+
+    /**
+     * Retrieves the priority value for a node.
+     * Returns the value of "et:priority" if defined; otherwise, falls back to defaultPriority.
+     */
+    public String getPriorityValue(Node contentNode, String defaultPriority) {
+        try {
+            if (contentNode != null && contentNode.hasProperty("et:priority")) {
+                String priority = contentNode.getProperty("et:priority").getString();
+                LOGGER.info("Priority value from node [{}]: {}", contentNode.getPath(), priority);
+                return priority;
+            }
+        } catch (RepositoryException e) {
+            LOGGER.error("Error while retrieving priority value for node: {}", contentNode, e);
+        }
+
+        LOGGER.info("Priority is not defined for node [{}], using default priority: {}", contentNode != null ? contentNode.getPath() : "null", defaultPriority);
+        return defaultPriority; // Return the default priority if "et:priority" is not defined
+    }
+
+    /**
+     * Generates sitemap entry for a page node.
+     */
+    public void generateSiteMap(Node contentNode, String siteURL, String prependPath, String hideContent, String modifiedDate, String defaultChangeFrequency, String defaultPriority) {
+        try {
+            // Retrieve the priority value; fallback to defaultPriority if "et:priority" is not defined
+            String priorityValue = getPriorityValue(contentNode, defaultPriority);
+
+            // Generate the sitemap data
+            String jsData = "<ns1:url>" 
+                          + "<ns1:loc>" + siteURL + prependPath + hideContent + "</ns1:loc>"
+                          + "<ns1:lastmod>" + modifiedDate + "</ns1:lastmod>"
+                          + "<ns1:changefreq>" + defaultChangeFrequency + "</ns1:changefreq>"
+                          + "<ns1:priority>" + priorityValue + "</ns1:priority>"
+                          + "</ns1:url>";
+
+            // Log the result
+            LOGGER.info("Generated sitemap entry for node [{}]: {}", contentNode.getPath(), jsData);
+
+        } catch (Exception e) {
+            LOGGER.error("Error while generating site map data.", e);
+        }
+    }
+}
