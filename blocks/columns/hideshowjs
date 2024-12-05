@@ -19,3 +19,49 @@
         dialog.getField('./et:title').allowBlank = true;
         dialog.getField('./et:title').fieldLabel = '';
     }
+
+
+
+=============================================================================================================
+
+
+// Function to initialize the dialog fields
+dialog.on('ready', function() {
+    // Initially hide both fields
+    dialog.getField('./et:title').hide();
+    dialog.getField('./et:title').allowBlank = true;
+    dialog.getField('./et:description').hide();
+    dialog.getField('./et:description').allowBlank = true;
+});
+
+// Function to handle dropdown change event
+dialog.on('change', function(field, value) {
+    if (value === 'title') {
+        // Show the title field and hide the description field
+        dialog.getField('./et:title').show();
+        dialog.getField('./et:title').allowBlank = false;
+        dialog.getField('./et:title').fieldLabel = 'Title';
+
+        dialog.getField('./et:description').hide();
+        dialog.getField('./et:description').allowBlank = true;
+    } else if (value === 'description') {
+        // Show the description field and hide the title field
+        dialog.getField('./et:description').show();
+        dialog.getField('./et:description').allowBlank = false;
+        dialog.getField('./et:description').fieldLabel = 'Description';
+
+        dialog.getField('./et:title').hide();
+        dialog.getField('./et:title').allowBlank = true;
+    } else {
+        // Hide both fields if no valid option is selected
+        dialog.getField('./et:title').hide();
+        dialog.getField('./et:title').allowBlank = true;
+        dialog.getField('./et:description').hide();
+        dialog.getField('./et:description').allowBlank = true;
+    }
+
+    // Validate the fields to ensure mandatory checks work correctly
+    dialog.getField('./et:title').validate();
+    dialog.getField('./et:description').validate();
+});
+
