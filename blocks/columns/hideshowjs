@@ -1,0 +1,21 @@
+ if (value === 'title') {
+        // Show the title field
+        dialog.getField('./et:title').show();
+        dialog.getField('./et:title').allowBlank = false;
+        dialog.getField('./et:title').fieldLabel = 'Title';
+
+        // Hide the description field
+        dialog.getField('./et:description').hide();
+        dialog.getField('./et:description').allowBlank = true;
+        dialog.getField('./et:description').fieldLabel = '';
+    } else if (value === 'description') {
+        // Show the description field
+        dialog.getField('./et:description').show();
+        dialog.getField('./et:description').allowBlank = false;
+        dialog.getField('./et:description').fieldLabel = 'Description';
+
+        // Hide the title field
+        dialog.getField('./et:title').hide();
+        dialog.getField('./et:title').allowBlank = true;
+        dialog.getField('./et:title').fieldLabel = '';
+    }
