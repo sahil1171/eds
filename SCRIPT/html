@@ -1,0 +1,35 @@
+<div class="line-of-credit-component">
+  <!-- General Section -->
+  <div>
+    <h3 data-sly-test="${properties.creditLimitHeader}">
+      ${properties.creditLimitHeader @ context='html'}
+    </h3>
+    <p>Show Credit Limit: 
+      <span data-sly-test="${properties.showCreditLimit}">
+        ${properties.showCreditLimit}
+      </span>
+    </p>
+    <h3 data-sly-test="${properties.rateHeader}">
+      ${properties.rateHeader @ context='html'}
+    </h3>
+    <p>Show Rate: 
+      <span data-sly-test="${properties.showRate}">
+        ${properties.showRate}
+      </span>
+    </p>
+  </div>
+  
+  <!-- Maxymizer Section -->
+  <div data-sly-test="${properties.maxymizerInfo}">
+    <p>Maxymizer Content: 
+      ${properties.maxymizerInfo}
+    </p>
+  </div>
+  
+  <!-- Target Section -->
+  <div data-sly-test="${properties.targetSegment}">
+    <p>Target Segment: 
+      ${properties.targetSegment}
+    </p>
+  </div>
+</div>
