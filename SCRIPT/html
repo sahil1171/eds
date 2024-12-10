@@ -1,35 +1,38 @@
-<div class="line-of-credit-component">
-  <!-- General Section -->
-  <div>
-    <h3 data-sly-test="${properties.creditLimitHeader}">
-      ${properties.creditLimitHeader @ context='html'}
-    </h3>
-    <p>Show Credit Limit: 
-      <span data-sly-test="${properties.showCreditLimit}">
-        ${properties.showCreditLimit}
-      </span>
-    </p>
-    <h3 data-sly-test="${properties.rateHeader}">
-      ${properties.rateHeader @ context='html'}
-    </h3>
-    <p>Show Rate: 
-      <span data-sly-test="${properties.showRate}">
-        ${properties.showRate}
-      </span>
-    </p>
-  </div>
-  
-  <!-- Maxymizer Section -->
-  <div data-sly-test="${properties.maxymizerInfo}">
-    <p>Maxymizer Content: 
-      ${properties.maxymizerInfo}
-    </p>
-  </div>
-  
-  <!-- Target Section -->
-  <div data-sly-test="${properties.targetSegment}">
-    <p>Target Segment: 
-      ${properties.targetSegment}
-    </p>
+<!-- Toggle Button (visible only in wcmmode=disabled) -->
+<div data-sly-test="${!wcmmode.edit}">
+  <div class="col-md-push-10 col-xs-12 col-md-2">
+    <div class="toggle toggle-inline" style="float: right; display: flex; align-items: center;">
+      <input type="checkbox" aria-checked="false" id="customer-view" role="switch">
+      <label for="customer-view">Customer View</label>
+      <div class="switch"></div>
+    </div>
   </div>
 </div>
+
+<!-- Line of Credit Wrapper -->
+<div class="line-of-credit-wrapper" style="display: none;">
+  <div class="line-of-credit-component">
+    <!-- General Section -->
+    <div>
+      <h3 data-sly-test="${properties.creditLimitHeader}">
+        ${properties.creditLimitHeader @ context='html'}
+      </h3>
+      <p>Show Credit Limit: 
+        <span data-sly-test="${properties.showCreditLimit}">
+          ${properties.showCreditLimit}
+        </span>
+      </p>
+      <h3 data-sly-test="${properties.rateHeader}">
+        ${properties.rateHeader @ context='html'}
+      </h3>
+      <p>Show Rate: 
+        <span data-sly-test="${properties.showRate}">
+          ${properties.showRate}
+        </span>
+      </p>
+    </div>
+
+    <!-- Maxymizer Section -->
+    <div data-sly-test="${properties.maxymizerInfo}">
+      <p>Maxymizer Content: 
+        ${
