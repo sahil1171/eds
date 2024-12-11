@@ -115,3 +115,17 @@ public class LineOfCreditModel {
         </footer>
     </div>
 </div>
+
+]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\///////////////////////////
+
+
+ <div class="container">
+        <div class="card" data-sly-use.lineOfCreditModel="${'com.example.models.LineOfCreditModel' @ targetSegment='${targetSegment}'}">
+            <div class="${lineOfCreditModel.cardClasses}">
+                <div class="${lineOfCreditModel.cardBodyClasses}">
+                    <h3>Line of Credit</h3>
+                    <p>Your line of credit information will be displayed here.</p>
+                </div>
+            </div>
+        </div>
+    </div>
