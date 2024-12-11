@@ -1,0 +1,117 @@
+package com.example.models;
+
+import com.adobe.cq.sightly.WCMUsePojo;
+import com.adobe.cq.wcm.core.components.models.Component;
+import com.day.cq.wcm.api.Page;
+import com.day.cq.wcm.api.PageManager;
+import com.day.cq.wcm.api.WCMMode;
+import org.apache.sling.api.resource.Resource;
+import org.apache.sling.api.resource.ResourceResolver;
+import org.apache.sling.models.annotations.DefaultInjectionStrategy;
+import org.apache.sling.models.annotations.Model;
+import org.apache.sling.models.annotations.injectorspecific.Self;
+import org.apache.sling.models.annotations.injectorspecific.ValueMapValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.PostConstruct;
+
+@Model(
+        adaptables = Resource.class,
+        adapters = {LineOfCreditModel.class},
+        defaultInjectionStrategy = DefaultInjectionStrategy.OPTIONAL
+)
+public class LineOfCreditModel {
+
+    private static final Logger LOG = LoggerFactory.getLogger(LineOfCreditModel.class);
+
+    @ValueMapValue(name = "et:targetSegment")
+    private String targetSegment;
+
+    @ValueMapValue(name = "et:description")
+    private String description;
+
+    @ValueMapValue(name = "et:footer")
+    private String footer;
+
+    private String cardBodyClasses = "card-body";
+    private String cardClasses = "card";
+
+    @Self
+    private Resource resource;
+
+    private String processedDescription;
+    private String processedFooter;
+
+    @PostConstruct
+    protected void init() {
+        LOG.info("Initializing LineOfCreditModel");
+
+        // Process description and footer content
+        processedDescription = processContent(description);
+        processedFooter = processContent(footer);
+
+        // Log initialized values
+        LOG.info("Processed Description: {}", processedDescription);
+        LOG.info("Processed Footer: {}", processedFooter);
+    }
+
+    /**
+     * Checks if the component should be visible.
+     *
+     * @return true if the targetSegment is "logged-in", false otherwise.
+     */
+    public boolean isVisible() {
+        return "logged-in".equals(targetSegment);
+    }
+
+    /**
+     * Processes the content (e.g., description or footer) for additional transformations if required.
+     *
+     * @param content the raw content
+     * @return the processed content
+     */
+    private String processContent(String content) {
+        if (content == null || content.isEmpty()) {
+            return "";
+        }
+        // Additional processing logic if needed
+        return content;
+    }
+
+    public String getCardBodyClasses() {
+        return cardBodyClasses;
+    }
+
+    public String getCardClasses() {
+        return cardClasses;
+    }
+
+    public String getProcessedDescription() {
+        return processedDescription;
+    }
+
+    public String getProcessedFooter() {
+        return processedFooter;
+    }
+}
+
+
+
+
+<!-- Line of Credit Component -->
+<div data-sly-use.lineOfCredit="com.example.models.LineOfCreditModel"
+     data-sly-test="${lineOfCredit.visible}">
+    <div class="${lineOfCredit.cardClasses}">
+        <!-- Card Body -->
+        <div class="${lineOfCredit.cardBodyClasses}">
+            <h2>Line of Credit</h2>
+            <p>${lineOfCredit.processedDescription}</p>
+        </div>
+
+        <!-- Footer -->
+        <footer class="card-footer">
+            ${lineOfCredit.processedFooter}
+        </footer>
+    </div>
+</div>
