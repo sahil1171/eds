@@ -134,4 +134,45 @@
 </script>
 
 
+NEWWWWWWWWWWWWWWWWWWWWW++++++++++++++++++++++++++++++++++++++++++++)))))))))))))))))))))))(((((((((((((
+
+
+<div class="line-of-credit-wrapper" style="display: none;">
+    <sly data-sly-use.header="com.etrade.cms.common.sling.models.LineOfCreditModel">
+        <div class="${header.cardBodyClasses}">
+            <div>
+                Content ${header.content @ context='html'}
+            </div>
+            <div>
+                Credit Limit Header ${header.creditLimitHeader @ context='html'}
+            </div>
+            <div>
+                Rate Header ${header.rateHeader @ context='html'}
+            </div>
+        </div>
+    </sly>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const customerViewToggle = document.getElementById("customer-view");
+    const lineOfCreditWrapper = document.querySelector(".line-of-credit-wrapper");
+
+    const toggleCustomerView = () => {
+        if (customerViewToggle && customerViewToggle.checked) {
+            lineOfCreditWrapper.style.display = "block";
+        } else {
+            lineOfCreditWrapper.style.display = "none";
+        }
+    };
+
+    if (customerViewToggle) {
+        customerViewToggle.addEventListener("change", toggleCustomerView);
+        toggleCustomerView(); // Initialize on load
+    }
+});
+</script>
+
+
+
 
