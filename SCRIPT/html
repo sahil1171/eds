@@ -71,3 +71,27 @@
     toggleCustomerView();
   });
 </script>
+
+
+///////////////////////////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+
+
+<!-- LineOfCreditModel usage -->
+<sly data-sly-use.header="com.etrade.cms.common.sling.models.LineOfCreditModel">
+
+    <!-- Main container -->
+    <div class="${header.cardBodyClasses}">
+        <div>
+            Credit Limit Header = ${properties.et:creditLimitHeader @ context='html'}
+        </div>
+    </div>
+    
+    <!-- Checkbox with aria-checked hardcoded to true -->
+    <div>
+        <input type="checkbox" aria-checked="true" id="customer-view" role="switch" checked>
+        <label for="customer-view">Customer view</label>
+    </div>
+
+</sly>
+
