@@ -118,3 +118,20 @@
 </sly>
 
 
+[ppppppppppp]]]]]]]]]]]]]]]]]]]]]]]]]]]p00000000000000000000888888888888889999990((((((((((())))))))))))()))))))
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Find the checkbox using its ID
+        var checkbox = document.getElementById("customer-view");
+
+        // Set the checkbox to checked
+        checkbox.checked = true;
+
+        // Update the aria-checked attribute to "true"
+        checkbox.setAttribute("aria-checked", "true");
+    });
+</script>
+
+
+
