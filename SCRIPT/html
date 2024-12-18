@@ -319,6 +319,54 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 </script>
 
+=============================================================================
+
+
+<sly data-sly-use.info="com.etrade.cms.common.sling.models.LineOfCreditModel">
+  <!-- Main Wrapper -->
+  <div class="${info.lineofcreditclasses}">
+    <!-- Content Section -->
+    <div data-sly-test="${properties.et.content}">
+      ${properties.et.content @ context='html'}
+    </div>
+    <!-- Credit Limit Header Section -->
+    <div data-sly-test="${properties.et.creditLimitHeader}">
+      ${properties.et.creditLimitHeader @ context='html'}
+    </div>
+    <!-- Rate Header Section -->
+    <div data-sly-test="${properties.et.rateHeader}">
+      ${properties.et.rateHeader @ context='html'}
+    </div>
+  </div>
+</sly>
+
+<div class="loc content-customer" id="customer-content" style="display: none;">
+  <!-- Dynamic Content Goes Here -->
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Get the checkbox and the div element
+    var checkbox = document.getElementById("customer-view");
+    var customerContent = document.getElementById("customer-content");
+
+    // Check if both elements exist
+    if (checkbox && customerContent) {
+      // Set the checkbox to checked
+      checkbox.checked = true;
+
+      // Update the aria-checked attribute
+      checkbox.setAttribute("aria-checked", "true");
+
+      // Update the div's display style to 'block'
+      customerContent.style.display = "block";
+    } else {
+      console.warn("Required elements not found: 'customer-view' or 'customer-content'.");
+    }
+  });
+</script>
+
+
 
 
 
