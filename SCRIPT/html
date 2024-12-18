@@ -257,6 +257,32 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
+=================================================================================================================
+
+
+document.addEventListener("DOMContentLoaded", function () {
+    // Select the div element
+    const customerDiv = document.querySelector(".loc.content-customer");
+
+    // Check if the div exists
+    if (customerDiv) {
+        // If the div is currently displayed (block), hide it
+        if (customerDiv.style.display === "block") {
+            customerDiv.style.display = "none";
+            console.log("Div is now hidden.");
+        } else {
+            // Otherwise, show the div
+            customerDiv.style.display = "block";
+            console.log("Div is now visible.");
+        }
+    } else {
+        // Handle the case where the div is not found
+        console.warn("Element with class 'loc content-customer' not found.");
+    }
+});
+
+
+
 
 
 
