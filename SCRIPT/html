@@ -340,31 +340,46 @@ document.addEventListener("DOMContentLoaded", function () {
   </div>
 </sly>
 
+<!-- Toggle Content Section -->
 <div class="loc content-customer" id="customer-content" style="display: none;">
   <!-- Dynamic Content Goes Here -->
 </div>
 
+<!-- Toggle Button -->
+<label>
+  <input type="checkbox" id="customer-view" />
+  Toggle Content
+</label>
+
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    // Get the checkbox and the div element
+    // Get the checkbox and the content div
     var checkbox = document.getElementById("customer-view");
     var customerContent = document.getElementById("customer-content");
 
-    // Check if both elements exist
+    // Function to toggle the display of the content
+    function toggleContent() {
+      if (checkbox.checked) {
+        // Hide the content when the checkbox is "on" (checked)
+        customerContent.style.display = "none";
+      } else {
+        // Show the content when the checkbox is "off" (unchecked)
+        customerContent.style.display = "block";
+      }
+    }
+
+    // Attach event listener to the checkbox
     if (checkbox && customerContent) {
-      // Set the checkbox to checked
-      checkbox.checked = true;
+      checkbox.addEventListener("change", toggleContent);
 
-      // Update the aria-checked attribute
-      checkbox.setAttribute("aria-checked", "true");
-
-      // Update the div's display style to 'block'
-      customerContent.style.display = "block";
+      // Initialize the state based on the checkbox's initial value
+      toggleContent();
     } else {
       console.warn("Required elements not found: 'customer-view' or 'customer-content'.");
     }
   });
 </script>
+
 
 
 
