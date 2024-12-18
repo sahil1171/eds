@@ -282,6 +282,47 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 
+------------===================================------------------------------------------//////////////
+<sly data-sly-use.info="com.etrade.cms.common.sling.models.LineOfCreditModel">
+  <!-- Main Wrapper -->
+  <div class="${info.lineofcreditclasses}">
+    <!-- Content Section -->
+    <div data-sly-test="${properties.et.content}">
+      ${properties.et.content @ context='html'}
+    </div>
+    <!-- Credit Limit Header Section -->
+    <div data-sly-test="${properties.et.creditLimitHeader}">
+      ${properties.et.creditLimitHeader @ context='html'}
+    </div>
+    <!-- Rate Header Section -->
+    <div data-sly-test="${properties.et.rateHeader}">
+      ${properties.et.rateHeader @ context='html'}
+    </div>
+  </div>
+</sly>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Get the checkbox by ID
+    var checkbox = document.getElementById("customer-view");
+
+    // Check if the checkbox element exists
+    if (checkbox) {
+      // Set the checkbox to checked
+      checkbox.checked = true;
+
+      // Update the aria-checked attribute
+      checkbox.setAttribute("aria-checked", "true");
+    } else {
+      console.warn("Checkbox with ID 'customer-view' not found.");
+    }
+  });
+</script>
+
+
+
+
+
 
 
 
