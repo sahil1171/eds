@@ -217,6 +217,24 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 
+--------------------------------------------------------------------------------
+
+<sly data-sly-use.info="LineOfCreditModel">
+  <div class="${info.lineofcreditclasses}">
+    <div>
+      Content ${properties['et:content'] @ context='html'}
+    </div>
+    <div>
+      Credit Limit Header ${properties['et:creditLimitHeader'] @ context='html'}
+    </div>
+    <div>
+      Rate Header ${properties['et:rateHeader'] @ context='html'}
+    </div>
+  </div>
+</sly>
+
+
+
 
 
 
