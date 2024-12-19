@@ -381,6 +381,33 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 
+=============================jQUESRY CODE==============================
+
+
+<script>
+  $(document).ready(function () {
+    const $customerViewToggle = $("#customer-view");
+    const $lineOfCreditWrapper = $(".line-of-credit-wrapper");
+
+    // Function to toggle visibility
+    const toggleCustomerView = () => {
+      if ($customerViewToggle.is(":checked")) {
+        $lineOfCreditWrapper.show();
+      } else {
+        $lineOfCreditWrapper.hide();
+      }
+    };
+
+    // Add event listener to the toggle button
+    $customerViewToggle.on("change", toggleCustomerView);
+
+    // Initialize the component state on load
+    toggleCustomerView();
+  });
+</script>
+
+
+
 
 
 
