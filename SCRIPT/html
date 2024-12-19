@@ -407,6 +407,31 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 
 
+==============================jq2========================
+<script>
+$(document).ready(function () {
+    const $customerViewToggle = $("#customer-view");
+    const $lineOfCreditWrapper = $(".line-of-credit-wrapper");
+
+    const toggleCustomerView = () => {
+        if ($customerViewToggle.is(":checked")) {
+            $lineOfCreditWrapper.show();
+        } else {
+            $lineOfCreditWrapper.hide();
+        }
+    };
+
+    if ($customerViewToggle.length) {
+        $customerViewToggle.on("change", toggleCustomerView);
+        toggleCustomerView(); // Initialize on load
+    } else {
+        console.warn("Customer view toggle element not found.");
+    }
+});
+</script>
+
+
+
 
 
 
