@@ -28,6 +28,7 @@ import org.jsoup.select.Elements;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern; no that't ok
 
+
 @Override
 protected void doGet(SlingHttpServletRequest request, SlingHttpServletResponse response) throws IOException {
     LOG.info("Received request to find active pages and scan for specific links.");
